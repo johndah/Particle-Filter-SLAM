@@ -20,7 +20,6 @@ def plotMap(landmarks):
         landmarks_x.append(landmark.x)
         landmarks_y.append(landmark.y)
 
-
     plt.plot(landmarks_x, landmarks_y, 'go')
     plt.xlabel('x')
     plt.ylabel('y')
