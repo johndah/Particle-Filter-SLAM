@@ -1,7 +1,7 @@
 
 
 def main():
-    print("Doing slam things")
+    print("Doing more slam things")
 
 if __name__ == '__main__':
     main()
