@@ -11,23 +11,32 @@ class Landmark(object):
         self.y = y
         self.index = index
 
-def plotMap(landmarks):
+landmarks = []
 
-    landmarks_x = []
-    landmarks_y = []
+def getMeasurements(robot_pose):
+
+    measurements = []
+    for landmark in landmarks:
+        dx = landmark.x - robot_pose[0]
+        dy = landmark.y - robot_pose[1]
+        r = sqrt(dx**2 + dy**2) + rand
+        if r < 5:
+            alpha = arctan2(dy, dx)
+            measurements.append([r, alpha])
+
+    return measurements
+
+def plotMap():
 
     for landmark in landmarks:
-        landmarks_x.append(landmark.x)
-        landmarks_y.append(landmark.y)
         plt.plot(landmark.x, landmark.y, 'go')
         plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
-    plt.axis([0, 5, 1, 4])
+    plt.axis([0, 25, 5, 20])
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
 
 def initMap():
-    landmarks = []
 
     f = open("landmarks.txt", "r")
     i = 0
@@ -36,13 +45,19 @@ def initMap():
         y = float(row.split(',')[1])
         landmarks.append(Landmark(x, y, i))
         i += 1
-    return landmarks
+
+def particleFilterSlam():
+
+    robot_pose = [7, 10, 0]
+    measurements = getMeasurements(robot_pose)
+    print(measurements)
+
+    plotMap()
 
 def main():
 
-    landmarks = initMap()
-
-    plotMap(landmarks)
+    initMap()
+    particleFilterSlam()
 
 if __name__ == '__main__':
     main()
