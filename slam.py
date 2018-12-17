@@ -19,16 +19,23 @@ def plotMap(landmarks):
     for landmark in landmarks:
         landmarks_x.append(landmark.x)
         landmarks_y.append(landmark.y)
-
-    plt.plot(landmarks_x, landmarks_y, 'go')
+        plt.plot(landmark.x, landmark.y, 'go')
+        plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
+    plt.axis([0, 5, 1, 4])
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
 
 def initMap():
     landmarks = []
-    for i in range(0, 3):
-        landmarks.append(Landmark(i, 2, 1))
+
+    f = open("landmarks.txt", "r")
+    i = 0
+    for row in f:
+        x = float(row.split(',')[0])
+        y = float(row.split(',')[1])
+        landmarks.append(Landmark(x, y, i))
+        i += 1
     return landmarks
 
 def main():
@@ -40,4 +47,3 @@ def main():
 if __name__ == '__main__':
     main()
     plt.show()
-    print('groda')
