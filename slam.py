@@ -12,17 +12,29 @@ class Landmark(object):
         self.index = index
 
 def plotMap(landmarks):
-    plt.figure()
-    plt.plot(landmarks[0].x, landmarks[0].y, 'go')
+
+    landmarks_x = []
+    landmarks_y = []
+
+    for landmark in landmarks:
+        landmarks_x.append(landmark.x)
+        landmarks_y.append(landmark.y)
+
+
+    plt.plot(landmarks_x, landmarks_y, 'go')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
 
+def initMap():
+    landmarks = []
+    for i in range(0, 3):
+        landmarks.append(Landmark(i, 2, 1))
+    return landmarks
 
 def main():
 
-    landmarks = []
-    landmarks.append(Landmark(1, 2, 1))
+    landmarks = initMap()
 
     plotMap(landmarks)
 
