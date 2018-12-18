@@ -4,6 +4,10 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+axis = [-5, 25, 5, 25]
+landmarks = []
+
+
 class Landmark(object):
 
     def __init__(self, x, y, index):
@@ -11,24 +15,104 @@ class Landmark(object):
         self.y = y
         self.index = index
 
-landmarks = []
+
+class OccupancyGrid():
+
+    def __init__(self):
+        self.grid_size = 0.5
+        self.n_cells_x = floor((axis[1] - axis[0]) / self.grid_size)
+        self.n_cells_y = floor((axis[3] - axis[2]) / self.grid_size)
+        self.generateGrid()
+
+    def generateGrid(self):
+        self.x_grid_vec = linspace(axis[0], axis[1], self.n_cells_x)
+        self.y_grid_vec = linspace(axis[2], axis[3], self.n_cells_y)
+
+        self.grid = []
+        for y_grid in self.y_grid_vec:
+            row = []
+            for x_grid in self.x_grid_vec:
+                cell = Cell(x_grid, y_grid)
+                if x_grid > 7 and x_grid < 7.4 and y_grid < 12.5:
+                    cell.occupied = True
+                row.append(cell)
+            self.grid.append(row)
+
+
+    def isOccupied(self, x, y):
+        x_grid, y_grid = self.getCellCoordinates(x, y)
+
+        return self.grid[y_grid][x_grid].occupied
+
+
+    def getCellCoordinates(self, x, y):
+        x_grid = int((x - axis[0]) / self.grid_size)
+        y_grid = int((y - axis[2]) / self.grid_size)
+
+        return x_grid, y_grid
+
+
+    def getCoordinates(self, x_grid, y_grid):
+        x = axis[0] + x_grid * self.grid_size
+        y = axis[2] + y_grid * self.grid_size
+
+        return x, y
+
+
+class Cell(object):
+    def __init__(self, x_grid, y_grid):
+        self.x_grid = x_grid
+        self.y_grid = y_grid
+        self.occupied = False
+
 
 def getMeasurements(robot_pose):
+    global occ_grid
 
     measurements = []
     for landmark in landmarks:
         dx = landmark.x - robot_pose[0]
         dy = landmark.y - robot_pose[1]
-        r = sqrt(dx**2 + dy**2) + 0.1*random.randn()
+        r = sqrt(dx ** 2 + dy ** 2) + 0.1 * random.randn()
         if r < 5:
-            alpha = arctan2(dy, dx) + 0.1*random.randn()
-            measurements.append([r, alpha])
+            alpha = arctan2(dy, dx) + 0.1 * random.randn()
+            n = 100
+            x_ray = robot_pose[0]
+            y_ray = robot_pose[1]
+            add_measurement = True
+            for i in range(0, n):
+                x_ray += r*cos(alpha)/n
+                y_ray += r*sin(alpha)/n
+
+                if occ_grid.isOccupied(x_ray, y_ray):
+                    add_measurement = False
+                    break
+            if add_measurement:
+                measurements.append([r, alpha])
 
     return measurements
 
+
 def plotMap(robot_pose, measurements):
+    global occ_grid, ax
+
+    # fig, ax = plt.figure()
 
     plt.cla()
+    '''
+    for x_grid in occ_grid.x_grid_vec:
+        print([x_grid, occ_grid.y_grid_vec[0]])
+        print( [x_grid, occ_grid.y_grid_vec[-1]])
+        plt.plot([x_grid, x_grid], [occ_grid.y_grid_vec[0], occ_grid.y_grid_vec[-1]], 'k')
+
+    '''
+    for j in range(0, len(occ_grid.grid)):
+        for i in range(0, len(occ_grid.grid[j])):
+            if occ_grid.grid[j][i].occupied:
+                x, y = occ_grid.getCoordinates(i, j)
+                rect = mpl.patches.Rectangle((x, y), occ_grid.grid_size, occ_grid.grid_size, edgecolor='none', facecolor='b')
+                ax.add_patch(rect)
+
     for landmark in landmarks:
         plt.plot(landmark.x, landmark.y, 'go')
         plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
@@ -36,16 +120,16 @@ def plotMap(robot_pose, measurements):
     for measure in measurements:
         r = measure[0]
         alpha = measure[1]
-        plt.plot([robot_pose[0], robot_pose[0] + r*cos(alpha)], [robot_pose[1], robot_pose[1] + r*sin(alpha)], 'b')
+        plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha)], [robot_pose[1], robot_pose[1] + r * sin(alpha)], 'b')
 
-    plt.axis([0, 25, 0, 25])
+    plt.axis(axis)
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
-    plt.pause(1e-3)
+    plt.pause(1e-5)
+
 
 def initMap():
-
     f = open("landmarks.txt", "r")
     i = 0
     for row in f:
@@ -54,18 +138,23 @@ def initMap():
         landmarks.append(Landmark(x, y, i))
         i += 1
 
-def particleFilterSlam():
 
-    for i in range(1 ,100):
-        robot_pose = [7, 12, 0]
+def particleFilterSlam():
+    for i in range(0, 50):
+        robot_pose = [8.5, 12, 0]
         measurements = getMeasurements(robot_pose)
 
         plotMap(robot_pose, measurements)
 
+
 def main():
+    global occ_grid, ax
+    occ_grid = OccupancyGrid()
 
     initMap()
+    fig, ax = plt.subplots()
     particleFilterSlam()
+
 
 if __name__ == '__main__':
     random.seed(0)
