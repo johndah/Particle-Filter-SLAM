@@ -27,6 +27,24 @@ def plot_particle_set(S, figure):
     plt.scatter(S[0,:],S[1,:])
 
 
+def systematic_resample(S):
+    M = S.shape[1]
+    cdf = cumsum(S[3,:])
+
+    rand = random.uniform(0,1/M,1)
+    print('rand')
+    print(rand)
+    S_new = zeros(S.shape)
+    for i in arange(0,M,1):
+        print(cdf >= rand + (i ) / M)
+        c = argmax(cdf >= rand+(i)/M)
+        print('c')
+        print(c)
+        S_new[:,i] = S[:,c]
+
+    return S_new
+
+'''
 def main():
     window = [0,5,0,5]
     S = particle_init(window, 100)
@@ -39,5 +57,12 @@ def main():
     fig2 = plt.figure()
     plot_particle_set(S, fig2)
     plt.show(fig1)
+    '''
+def main():
+    S = array([[1,2,3,4],[1,2,3,4],[1,2,3,4],[0,1/6,2/6,3/6]])
+    # print(S)
+    S = systematic_resample(S)
+    print(S)
+
 main()
 
