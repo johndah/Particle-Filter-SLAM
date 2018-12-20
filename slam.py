@@ -1,6 +1,7 @@
 from numpy import *
 import matplotlib.pyplot as plt
 from matplotlib import colors
+from motion import *
 
 axis = [0, 2.5, 0, 2.5]
 landmarks = []
@@ -14,7 +15,7 @@ class Landmark(object):
         self.index = index
 
 
-class OccupancyGrid():
+class OccupancyGrid:
 
     def __init__(self):
         self.grid_size = 2.5 / 100
@@ -25,7 +26,6 @@ class OccupancyGrid():
 
         self.grid = -ones([self.n_cells_x, self.n_cells_y])
         self.true_grid = zeros([self.n_cells_x, self.n_cells_y])
-
 
     def getCellCoordinates(self, x, y):
         i = int((x - axis[0]) / self.grid_size)
@@ -62,10 +62,11 @@ class OccupancyGrid():
 def getMeasurements(robot_pose):
     global occ_grid, updated_cells
 
+    sigma = 5e-2
     measurements = []
     updated_cells = []
 
-    n_alphas = 100
+    n_alphas = 50
     alphas = linspace(-pi, pi, n_alphas) + 0.05 * random.randn(n_alphas)
 
     for alpha in alphas:
@@ -88,32 +89,42 @@ def getMeasurements(robot_pose):
     for landmark in landmarks:
         dx = landmark.x - robot_pose[0]
         dy = landmark.y - robot_pose[1]
-        r = sqrt(dx ** 2 + dy ** 2) + 0.05 * random.randn()
+        r = sqrt(dx ** 2 + dy ** 2)
 
-        alpha = arctan2(dy, dx) + 0.05 * random.randn()
+        alpha = arctan2(dy, dx)
         n = int(max(abs(dx), abs(dy)) / occ_grid.grid_size)
         x_ray = robot_pose[0]
         y_ray = robot_pose[1]
         add_measurement = True
-
+        first_wall = False
+        wall_count = 0
+        wall_count_inc = 0
         for i in range(0, n):
             x_ray += r * cos(alpha) / n
             y_ray += r * sin(alpha) / n
 
             if occ_grid.isWall(x_ray, y_ray):
-                add_measurement = False
-                break
+                print(wall_count, n)
+                if first_wall and wall_count > 10:
+                    add_measurement = False
+                    break
+                first_wall = True
+                wall_count_inc = 1
+
+            wall_count += wall_count_inc
 
         if add_measurement:
-            measurements.append([r, alpha])
+            measurements.append([r+sigma* random.randn(), alpha+sigma * random.randn()])
 
     return measurements
 
 
-def plotMap(robot_pose, measurements):
+def plotMap(robot_poses, measurements, i):
     global occ_grid, ax, updated_cells, walls
 
+    robot_pose = robot_poses[:, i]
     plt.cla()
+
     cmap = colors.ListedColormap(['grey', 'white', 'orange'])
     bounds = [-1, -.1, .1, 1]
     norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -129,11 +140,13 @@ def plotMap(robot_pose, measurements):
         plt.plot(wall[:2], wall[2:4], 'b', linewidth=1.5)
 
     for landmark in landmarks:
-        plt.plot(landmark.x, landmark.y, 'go')
+        plt.plot(landmark.x, landmark.y, 'go', markersize=10)
         plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
 
+    plt.plot(robot_poses[0, :], robot_poses[1, :], 'bo')
+
     plt.axis(axis)
-    plt.axis('equal')
+    #plt.axis('equal')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
@@ -141,7 +154,7 @@ def plotMap(robot_pose, measurements):
 
 
 def initMap():
-    global occ_grid, ax, walls
+    global occ_grid, ax, walls, path
     f = open("map.txt", "r")
     walls = []
     for row in f:
@@ -172,25 +185,51 @@ def initMap():
     f = open("landmarks.txt", "r")
     i = 0
     for row in f:
-        x = float(row.split(',')[0])
-        y = float(row.split(',')[1])
-        landmarks.append(Landmark(x, y, i))
-        i += 1
+        if '#' not in row:
+            x = float(row.split(',')[0])
+            y = float(row.split(',')[1])
+            landmarks.append(Landmark(x, y, i))
+            i += 1
 
-    plt.axis(axis)
-    plt.axis('equal')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Map')
-    plt.pause(1e-5)
-
+    f = open("path.txt", "r")
+    distances = []
+    anglular_velocities = []
+    for row in f:
+        if '#' not in row:
+            distances.append(float(row.split(',')[0]))
+            anglular_velocities.append(float(row.split(',')[1]))
+    path = [distances, anglular_velocities]
 
 def particleFilterSlam():
-    for i in range(0, 30):
-        robot_pose = [1, 1, 0]
-        measurements = getMeasurements(robot_pose)
 
-        plotMap(robot_pose, measurements)
+    global path
+
+    x0, y0, theta0 = 0.25, .25, pi/2
+    distances = path[0]
+    a_velocities = path[1]
+    t = 0
+    dt = 0.1
+    n_path = int(sum(distances)/dt)
+    robot_poses = zeros([3, n_path+1])
+    robot_poses[:, 0] = array([[x0], [y0], [theta0]]).T
+
+    print(int(sum(distances)/dt))
+    velocities = ones((1, n_path))
+    angular_velocities = zeros((1, n_path))
+    start = 0
+    for i in range(len(a_velocities)):
+        n = min(int(distances[i]/dt), n_path-start)
+        end = start + n
+        angular_velocities[0, start:end] = a_velocities[i]*ones((1, n))
+        start = end
+
+    for i in range(0, n_path):
+        measurements = getMeasurements(robot_poses[:, i])
+
+        plotMap(robot_poses, measurements, i)
+        #print(velocities[1,i], angular_velocities[1,i])
+        robot_poses = motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
+
 
 
 def main():
@@ -203,6 +242,6 @@ def main():
 
 
 if __name__ == '__main__':
-    random.seed(0)
+    #random.seed(0)
     main()
     plt.show()
