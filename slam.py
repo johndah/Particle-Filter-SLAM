@@ -2,6 +2,7 @@ from numpy import *
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from motion import *
+from particle_filter import *
 
 axis = [0, 2.5, 0, 2.5]
 landmarks = []
@@ -99,12 +100,12 @@ def getMeasurements(robot_pose):
         first_wall = False
         wall_count = 0
         wall_count_inc = 0
+
         for i in range(0, n):
             x_ray += r * cos(alpha) / n
             y_ray += r * sin(alpha) / n
 
             if occ_grid.isWall(x_ray, y_ray):
-                print(wall_count, n)
                 if first_wall and wall_count > 10:
                     add_measurement = False
                     break
@@ -119,7 +120,7 @@ def getMeasurements(robot_pose):
     return measurements
 
 
-def plotMap(robot_poses, measurements, i):
+def plotMap(robot_poses, measurements, i, S):
     global occ_grid, ax, updated_cells, walls
 
     robot_pose = robot_poses[:, i]
@@ -143,10 +144,12 @@ def plotMap(robot_poses, measurements, i):
         plt.plot(landmark.x, landmark.y, 'go', markersize=10)
         plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
 
-    plt.plot(robot_poses[0, :], robot_poses[1, :], 'bo')
+    plot_particle_set(S)
+    #plt.scatter(S[0, :], S[1, :])
+
+    plt.plot(robot_poses[0, :], robot_poses[1, :], 'gx')
 
     plt.axis(axis)
-    #plt.axis('equal')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
@@ -172,6 +175,7 @@ def initMap():
         n = 10 * int(max(abs(dx), abs(dy)) / occ_grid.grid_size)
         x = x_start
         y = y_start
+
 
         for i in range(0, n):
             x += dx / n
@@ -213,21 +217,24 @@ def particleFilterSlam():
     robot_poses = zeros([3, n_path+1])
     robot_poses[:, 0] = array([[x0], [y0], [theta0]]).T
 
-    print(int(sum(distances)/dt))
     velocities = ones((1, n_path))
     angular_velocities = zeros((1, n_path))
     start = 0
-    for i in range(len(a_velocities)):
-        n = min(int(distances[i]/dt), n_path-start)
+    for path_index in range(len(a_velocities)):
+        n = min(int(distances[path_index]/dt), n_path-start)
         end = start + n
-        angular_velocities[0, start:end] = a_velocities[i]*ones((1, n))
+        angular_velocities[0, start:end] = a_velocities[path_index]*ones((1, n))
         start = end
+
+
+    S = particle_init(axis, 100)
 
     for i in range(0, n_path):
         measurements = getMeasurements(robot_poses[:, i])
 
-        plotMap(robot_poses, measurements, i)
-        #print(velocities[1,i], angular_velocities[1,i])
+        # S = systematic_resample(S)
+
+        plotMap(robot_poses, measurements, i, S)
         robot_poses = motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
 
 
