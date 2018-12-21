@@ -21,7 +21,7 @@ def particle_init(window, M, start_pose = []):
     return S
 
 
-def plot_particle_set(S, figure):
+def plot_particle_set(S):
     #  Plots particle set S in figure figure
     #  S has dimensions 4xM where M in the number of particles
     plt.scatter(S[0,:],S[1,:])

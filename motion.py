@@ -23,10 +23,13 @@ def motion_model_gt(v, omega, mu, delta_t):
     u = [dx, dy, dtheta]
     return u
 
-'''
-def motion_path():
-    start = 0
-    stop = 2
-    for t in linspace(start,stop,(stop-start)/delta_t):
-'''
+def motion_model(v, omega, robot_poses, delta_t, i):
+    # Calculates ground truth u given v, omega, mu, and delta_t; u = (dx,dy,dtheta)
+    dx = v*delta_t*cos(robot_poses[2, i])
+    dy = v*delta_t*sin(robot_poses[2, i])
+    dtheta = omega*delta_t
+    robot_poses[0, i+1] = robot_poses[0, i] + dx
+    robot_poses[1, i+1] = robot_poses[1, i] + dy
+    robot_poses[2, i+1] = robot_poses[2, i] + dtheta
 
+    return robot_poses
