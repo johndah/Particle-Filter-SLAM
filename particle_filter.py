@@ -21,6 +21,36 @@ def particle_init(window, M, start_pose = []):
     return S
 
 
+def associate_known(S, measurements, weights, lambda_Psi, Q, known_associations):
+    n = shape(measurements, 2)
+    M = shape(S, 2)
+    N = shape(weights, 2)
+
+    nu = zeros((2, M))
+    psi = zeros((1, M))
+
+    for j in known_associations:
+        '''
+        z_i = tile(measurements[:, i], (1, M, N)) 
+        nu[:, :, :] = z_i - z_hat
+        nu[2, :, :] = mod(nu[2, :, :] + pi, 2*pi) - pi
+        q = flip(tile(diag(Q), [1, M, N]), axis=1)
+        d = sum(nu**2/q)  # Assuming Q is 2x2
+        psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
+        Psi[i, :] = max(psi, [], [2])
+        '''
+        z_hat = observation_model(S, weights, j)
+        nu[:, :] = measurements[:, j] - z_hat
+        nu[2, :] = mod(nu[2, :] + pi, 2 * pi) - pi
+        q = tile(flip(array([diag(Q)]).T, axis=1), [1, M])
+        d = sum(nu ** 2 / q)  # Assuming Q is 2x2
+        psi[j, :] = 1 / (2 * pi * linalg.det(Q) ** .5)*exp(-.5*d)
+
+    reshape(psi, (1, n, M))
+    outlier = mean(psi, axis=2) <= lambda_Psi
+
+    return outlier, psi
+
 def plot_particle_set(S):
     #  Plots particle set S in figure figure
     #  S has dimensions 4xM where M in the number of particles
