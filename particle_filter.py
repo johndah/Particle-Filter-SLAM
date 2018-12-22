@@ -21,7 +21,8 @@ def particle_init(window, M, start_pose = []):
     return S
 
 
-def associate_known(S, measurements, weights, lambda_Psi, Q, known_associations):
+def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
+
     n = shape(measurements, 2)
     M = shape(S, 2)
     N = shape(weights, 2)
@@ -39,7 +40,7 @@ def associate_known(S, measurements, weights, lambda_Psi, Q, known_associations)
         psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
         Psi[i, :] = max(psi, [], [2])
         '''
-        z_hat = observation_model(S, weights, j)
+        z_hat = measurement_model(S, W, j)
         nu[:, :] = measurements[:, j] - z_hat
         nu[2, :] = mod(nu[2, :] + pi, 2 * pi) - pi
         q = tile(flip(array([diag(Q)]).T, axis=1), [1, M])
@@ -84,18 +85,18 @@ def weight(S, Psi, outlier):
     S[4,:] = w
     return S
 
-def measurement_model(W, S):
+def measurement_model(S, W):
     # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
     # S is the particle set. Shape [4, particles]
     # h is predicted measurements. Shape [2*landmarks, particles]
     no_landmarks = W.shape[0]/2
-    xindices = arange(0,no_landmarks+1,2)
+    xindices = arange(0, no_landmarks,2)
     yindices = xindices + 1
 
-    h = [sqrt(square(W[xindices] - S[0,:]) + square(W[yindices] - S[1,:]) ), # inputa varannan
-    atan2(W(yindices) - S(2,:), W(xindices) - S(1,:)) - S(3,:)];
+    # inputa varannan
+    h = array([[sqrt(square(W[xindices] - S[0,:]) + square(W[yindices] - S[1,:]) )], [arctan2(W[yindices] - S[1,:], W[xindices] - S[0,:]) - S[2,:]]]).T
 
-    h(2,:) = mod(h(2,:)+pi, 2 * pi)-pi;
+    h[1,:] = mod(h[1,:] + pi, 2 * pi) - pi;
 
     return h
 '''
