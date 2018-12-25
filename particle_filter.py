@@ -65,6 +65,10 @@ def plot_particle_set(S):
         t._transform = t.get_transform().rotate_deg(S[2, i]*180/pi)
         plt.scatter(S[0, i], S[1, i], marker=t, s=20, color='b')
 
+def plot_landmark_particle_set(W):
+    #  Plots particle set S in figure figure
+    #  S has dimensions 4xM where M in the number of particles
+    plt.scatter(W[0, :], W[1, :], marker='o', s=5, color=[.05, .3, .05])
 
 def systematic_resample(S):  # Must include map resample
     M = S.shape[1]
