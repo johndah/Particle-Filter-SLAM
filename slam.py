@@ -106,6 +106,7 @@ def getMeasurements(robot_pose):
             y_ray += r * sin(alpha) / n
 
             if occ_grid.isWall(x_ray, y_ray):
+
                 if first_wall and wall_count > 10:
                     add_measurement = False
                     break
@@ -145,7 +146,6 @@ def plotMap(robot_poses, measurements, i, S):
         plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
 
     plot_particle_set(S)
-    #plt.scatter(S[0, :], S[1, :])
 
     plt.plot(robot_poses[0, :], robot_poses[1, :], 'gx')
 
@@ -175,7 +175,6 @@ def initMap():
         n = 10 * int(max(abs(dx), abs(dy)) / occ_grid.grid_size)
         x = x_start
         y = y_start
-
 
         for i in range(0, n):
             x += dx / n
@@ -211,7 +210,6 @@ def particleFilterSlam():
     x0, y0, theta0 = 0.25, .25, pi/2
     distances = path[0]
     a_velocities = path[1]
-    t = 0
     dt = 0.1
     n_path = int(sum(distances)/dt)
     robot_poses = zeros([3, n_path+1])
