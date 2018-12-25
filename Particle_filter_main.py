@@ -28,4 +28,12 @@ def particle_filter_main():
 
 
 
+def init_parameter():  # Initialization fo parameters in particle fitler 
+	Q = diag([1e-2, 1e-2, 1e-1])  # Measurement noise
+	R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
+	lambda_Psi = 0.01  # Outlier threshold
+	M = 1e3  # Number of particles
+	start_pose = array([[0,0,0]])
+	S = particle_init(M, start_pose)  # Particle set
 
+	return Q, R, lambda_Psi, S
