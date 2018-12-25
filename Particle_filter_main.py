@@ -15,7 +15,8 @@ def particle_filter_main():
 
 	''' Measurement '''
     measurement = getMeasurement(robot_pose)  # Measurement from the robot
-	h = measurement_model(W, S)  # Predicted measurement
+    #funktion som lägger till nya landmarks 
+    h = measurement_model(W, S)  # Predicted measurement
 	 
 	''' Association '''
 	outlier, Psi = associate_known(S, measurements, W, lambda_Psi, Q, known_associations)  # This function should initialize the new landmarks 	
@@ -26,6 +27,11 @@ def particle_filter_main():
 	''' Resampling '''
 	S, W = Systematic_resample(S, W)  # W is the map
 
+
+'''
+Need v and omega vectors
+Need a good way to update W
+'''
 
 
 def init_parameter():  # Initialization fo parameters in particle fitler 
