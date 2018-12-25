@@ -116,7 +116,7 @@ def getMeasurements(robot_pose):
             wall_count += wall_count_inc
 
         if add_measurement:
-            measurements[:, j] = [r + sigma * random.randn(), alpha + sigma * random.randn()]
+            measurements[:, j] = [r + sigma * random.randn(), alpha - robot_pose[2] + sigma * random.randn()]
 
     return measurements
 
