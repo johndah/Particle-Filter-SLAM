@@ -21,6 +21,37 @@ def particle_init(window, M, start_pose = []):
     return S
 
 
+def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
+
+    n = shape(measurements, 2)
+    M = shape(S, 2)
+    N = shape(weights, 2)
+
+    nu = zeros((2, M))
+    psi = zeros((1, M))
+
+    for j in known_associations:
+        '''
+        z_i = tile(measurements[:, i], (1, M, N)) 
+        nu[:, :, :] = z_i - z_hat
+        nu[2, :, :] = mod(nu[2, :, :] + pi, 2*pi) - pi
+        q = flip(tile(diag(Q), [1, M, N]), axis=1)
+        d = sum(nu**2/q)  # Assuming Q is 2x2
+        psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
+        Psi[i, :] = max(psi, [], [2])
+        '''
+        z_hat = measurement_model(S, W, j)
+        nu[:, :] = measurements[:, j] - z_hat
+        nu[2, :] = mod(nu[2, :] + pi, 2 * pi) - pi
+        q = tile(flip(array([diag(Q)]).T, axis=1), [1, M])
+        d = sum(nu ** 2 / q)  # Assuming Q is 2x2
+        psi[j, :] = 1 / (2 * pi * linalg.det(Q) ** .5)*exp(-.5*d)
+
+    reshape(psi, (1, n, M))
+    outlier = mean(psi, axis=2) <= lambda_Psi
+
+    return outlier, psi
+
 def plot_particle_set(S):
     #  Plots particle set S in figure figure
     #  S has dimensions 4xM where M in the number of particles
@@ -59,30 +90,23 @@ def measurement_model(W, S):
     # S is the particle set. Shape [4, particles]
     # h is predicted measurements. Shape [2*landmarks, particles], [r, theta]
     no_landmarks = int(W.shape[0]/2)
-    M = W.shape[1]
-    xindices = arange(0,no_landmarks+1,2)
+    M = W.shape[1]  # Number of particles
+    xindices = arange(0, 2*no_landmarks,2)
     yindices = xindices + 1
     h = array(zeros([2*no_landmarks, M]))
-    a = array([[sqrt(square(W[xindices, :][0, - S:]) + square(W[yindices, :] - S[1, :]))]])  # Distance to landmarks
-    print(a.shape)
-    print('hej ')
-    h[xindices, :] = array([[sqrt(square(W[xindices, :] [0,- S:]) + square(W[yindices,:] - S[1,:]) )]])  # Distance to landmarks
+    h[xindices, :] = array(sqrt(square(W[xindices, :]-S[0, :]) + square(W[yindices, :] - S[1, :])))  # Distance to landmarks
     h[yindices, :] = arctan2(W[yindices, :] - S[2,:], W[xindices, :] - S[1,:] - S[3,:])  # Angle to landmarks
     h[yindices, :] = mod(h[yindices, :]+pi, 2 * pi)-pi
     return h
 
-
 def measurement_model_test():
-    S = array([array([1,2,3,4]), array([-1,-2,-3,-4]),array( [0.1,0.2,0.3,0.4]), ones([1,4])])
-    W = array([[ones([1,4]), arange(0,4),ones([1,4]), ones([1,4])]])
+    S = array([array([1,2,3,4]), array([-1,-2,-3,-4]),array( [0.1,0.2,0.3,0.4]), array([1,1,1,1])])
+    W = array([array([1,2,3,4]),array([1,2,3,4]),array([-1,-2,-3,-4]),array([-1,-2,-3,-4])]) # 4 particles and 2 landmark
     W = W.T
-    '''print('S')
-    print(S)
-    print('W')
-    print(W[1,:])'''
+
     h = measurement_model(W, S)
-    #print(h)
-measurement_model_test()
+    
+
 '''
 def main():
     window = [0,5,0,5]
