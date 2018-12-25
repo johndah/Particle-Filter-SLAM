@@ -1,9 +1,9 @@
 from numpy import *
 import matplotlib.pyplot as plt
 from motion import *
+import matplotlib as mpl
 
-
-def particle_init(window, M, start_pose = []):
+def particle_init(window, M, start_pose=[]):
     # initializes the particle set of M particles inside given window
     # window should be  [x_min, x_max, y_min, y_max]
     sigma_xy = 1e-1  # Variance in starting position for known pose for x and y
@@ -12,93 +12,140 @@ def particle_init(window, M, start_pose = []):
     if not start_pose:  # If start_pose is empty, wont be used
         S[0, :] = random.uniform(window[0], window[1], [1, M])
         S[1, :] = random.uniform(window[2], window[3], [1, M])
-        S[2, :] = random.uniform(-pi/2, pi/2, [1, M])
+        S[2, :] = random.uniform(-pi, pi, [1, M])
     else:
         S = zeros([4, M])  # If start_pose is given the particle set will be gaussians around the starting position
-        S[0, :] = start_pose[0]+random.randn(1, M)*sigma_xy
-        S[1, :] = start_pose[1]+random.randn(1, M)*sigma_xy
-        S[1, :] = start_pose[2]+random.randn(1, M)*sigma_theta
+        S[0, :] = start_pose[0] + random.randn(1, M) * sigma_xy
+        S[1, :] = start_pose[1] + random.randn(1, M) * sigma_xy
+        S[1, :] = start_pose[2] + random.randn(1, M) * sigma_theta
     return S
 
 
-def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
+def associate_known(S, measurements, W, lambda_Psi, Q):
+    M = size(S, 1)
+    n_landmarks = size(measurements, 1)
 
-    n = shape(measurements, 2)
-    M = shape(S, 2)
-    N = shape(weights, 2)
+    z_hat = measurement_model(S, W)
+    particle_measurements = zeros((2 * n_landmarks, M))
+    particle_measurements[:, :] = reshape(measurements, (2 * n_landmarks, 1), order='F')
 
-    nu = zeros((2, M))
-    psi = zeros((1, M))
+    nu = particle_measurements - z_hat
+    feature1_indices = arange(0, 2 * n_landmarks, 2)
+    feature2_indices = feature1_indices + 1
+    nu[feature2_indices, :] = mod(nu[feature2_indices, :] + pi, 2 * pi) - pi
 
-    for j in known_associations:
-        '''
-        z_i = tile(measurements[:, i], (1, M, N)) 
-        nu[:, :, :] = z_i - z_hat
-        nu[2, :, :] = mod(nu[2, :, :] + pi, 2*pi) - pi
-        q = flip(tile(diag(Q), [1, M, N]), axis=1)
-        d = sum(nu**2/q)  # Assuming Q is 2x2
-        psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
-        Psi[i, :] = max(psi, [], [2])
-        '''
-        z_hat = measurement_model(S, W, j)
-        nu[:, :] = measurements[:, j] - z_hat
-        nu[2, :] = mod(nu[2, :] + pi, 2 * pi) - pi
-        q = tile(flip(array([diag(Q)]).T, axis=1), [1, M])
-        d = sum(nu ** 2 / q)  # Assuming Q is 2x2
-        psi[j, :] = 1 / (2 * pi * linalg.det(Q) ** .5)*exp(-.5*d)
+    q = tile(diag(Q), (M, n_landmarks)).T
+    # q = tile(flip(array([diag(Q)]), axis=1), [1, M])
+    nu2 = nu ** 2 / q  # Assuming Q is 2x2
+    d = nu2[feature1_indices, :] + nu2[feature2_indices, :]
 
-    reshape(psi, (1, n, M))
-    outlier = mean(psi, axis=2) <= lambda_Psi
+    psi = 1 / (2 * pi * linalg.det(Q) ** .5) * exp(-.5 * d)
+    seen_landmarks_indices = where(1 - measurements.any(axis=0))
+    psi[seen_landmarks_indices, :] = 0
+    outlier = mean(psi, axis=1) <= lambda_Psi
 
-    return outlier, psi
+    '''
+    z_i = tile(measurements[:, i], (1, M, N)) 
+    nu[:, :, :] = z_i - z_hat
+    nu[2, :, :] = mod(nu[2, :, :] + pi, 2*pi) - pi
+    q = flip(tile(diag(Q), [1, M, N]), axis=1)
+    d = sum(nu**2/q)  # Assuming Q is 2x2
+    psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
+    Psi[i, :] = max(psi, [], [2])
+    '''
+
+    return psi, outlier
+
 
 def plot_particle_set(S):
     #  Plots particle set S in figure figure
     #  S has dimensions 4xM where M in the number of particles
-    plt.scatter(S[0,:],S[1,:])
+    for i in range(size(S, 1)):
+        t = mpl.markers.MarkerStyle(marker='>')
+        t._transform = t.get_transform().rotate_deg(S[2, i]*180/pi)
+        plt.scatter(S[0, i], S[1, i], marker=t, s=20, color='b')
 
 
 def systematic_resample(S):  # Must include map resample
     M = S.shape[1]
-    cdf = cumsum(S[3,:])
+    cdf = cumsum(S[3, :])
 
-    rand = random.uniform(0,1/M,1)
-    print('rand')
-    print(rand)
+    # print('rand')
+    # print(rand)!
+    random.seed(0)
+    rand = random.uniform(0, 1 / M, 1)
     S_new = zeros(S.shape)
-    for i in arange(0,M,1):
-        print(cdf >= rand + (i ) / M)
-        c = argmax(cdf >= rand+(i)/M)
-        print('c')
-        print(c)
-        S_new[:,i] = S[:,c]
+    for i in range(M):
+        # print(cdf >= rand + (i ) / M)
+        # c = argmax(cdf >= rand + (i) / M)
+        c = where(cdf >= rand + (i) / M)[0][0]
+        # print('c')
+        # print(cdf)
+        # print(where(cdf >= rand + (i) / M)[0])
+        # print(c)
+        S_new[:, i] = S[:, c]
+        S_new[3, i] = 1/M
 
     return S_new
+
+'''
+M = size(S_bar, 2);
+cdf = cumsum(S_bar(4, :));
+S = zeros(size(S_bar));
+r0 = rand()/M;
+for j = 1:M
+    [~, i] = find(cdf >= r0 + (j-1)/M, 1);
+    S(:,j) = S_bar(:,i);
+    S(4,j) = 1/M;
+end
+
+
+'''
+
+
+def measurement_model(S, W):
+    # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
+    # S is the particle set. Shape [4, particles]
+    # h is predicted measurements. Shape [2*landmarks, particles]
+    no_landmarks = int(W.shape[0] / 2)
+    M = S.shape[1]
+    xindices = arange(0, no_landmarks, 2)
+    yindices = xindices + 1
+
+    # inputa varannan
+    h = zeros((2 * no_landmarks, M))
+    h[xindices, :] = sqrt(square(W[xindices, :] - S[0, :]) + square(W[yindices, :] - S[1, :]))
+    h[yindices, :] = arctan2(W[yindices, :] - S[1, :], W[xindices, :] - S[0, :]) - S[2, :]
+    # print(shape(sqrt(square(W[xindices, :] - S[0,:]) + square(W[yindices, :] - S[1,:]) )))
+    # print(shape(h))
+
+    h[yindices, :] = mod(h[yindices, :] + pi, 2 * pi) - pi
+
+    return h
 
 
 def weight(S, Psi, outlier):
     # Adds weights to the last row in S
     # Psi in on the [n, M] where n is the number of measurements an M is the number of particles
     # outlier contains information about measurement outliers
-    pz = prod(Psi[where(1-outlier)], 1)  # Non normalized weights without outliers
-    w = pz*1/sum(pz)  # Normalization
-    S[4,:] = w
+
+    pz = prod(Psi[where(1 - outlier)[0], :], axis=0)  # Non normalized weights without outliers
+    w = pz / sum(pz)  # Normalization
+    S[3, :] = w
+
     return S
 
-def measurement_model(S, W):
-    # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
-    # S is the particle set. Shape [4, particles]
-    # h is predicted measurements. Shape [2*landmarks, particles]
-    no_landmarks = W.shape[0]/2
-    xindices = arange(0, no_landmarks,2)
-    yindices = xindices + 1
 
-    # inputa varannan
-    h = array([[sqrt(square(W[xindices] - S[0,:]) + square(W[yindices] - S[1,:]) )], [arctan2(W[yindices] - S[1,:], W[xindices] - S[0,:]) - S[2,:]]]).T
+def main():
+    S = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
+    # print(S)
+    S = systematic_resample(S)
+    # print(S)
 
-    h[1,:] = mod(h[1,:] + pi, 2 * pi) - pi;
 
-    return h
+if __name__ == '__main__':
+    main()
+
 '''
 def main():
     window = [0,5,0,5]
@@ -113,11 +160,3 @@ def main():
     plot_particle_set(S, fig2)
     plt.show(fig1)
     '''
-def main():
-    S = array([[1,2,3,4],[1,2,3,4],[1,2,3,4],[0,1/6,2/6,3/6]])
-    # print(S)
-    S = systematic_resample(S)
-    print(S)
-
-main()
-

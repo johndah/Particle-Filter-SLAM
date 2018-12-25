@@ -1,11 +1,11 @@
 from numpy import *
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from motion import *
-from particle_filter import *
+import motion
+import particle_filter as pf
+import matplotlib as mpl
 
 axis = [0, 2.5, 0, 2.5]
-landmarks = []
 
 
 class Landmark(object):
@@ -22,8 +22,6 @@ class OccupancyGrid:
         self.grid_size = 2.5 / 100
         self.n_cells_x = int((axis[1] - axis[0]) / self.grid_size)
         self.n_cells_y = int((axis[3] - axis[2]) / self.grid_size)
-        # self.x_grid_vec = linspace(axis[0], axis[1], self.n_cells_x)
-        # self.y_grid_vec = linspace(axis[2], axis[3], self.n_cells_y)
 
         self.grid = -ones([self.n_cells_x, self.n_cells_y])
         self.true_grid = zeros([self.n_cells_x, self.n_cells_y])
@@ -60,11 +58,13 @@ class OccupancyGrid:
 
         return x, y
 
+
 def getMeasurements(robot_pose):
-    global occ_grid, updated_cells
+    global occ_grid, updated_cells, landmarks
 
     sigma = 5e-2
-    measurements = []
+    n_landmarks = size(landmarks, 1)
+    measurements = zeros((2, n_landmarks))
     updated_cells = []
 
     n_alphas = 50
@@ -75,7 +75,7 @@ def getMeasurements(robot_pose):
         y_ray = robot_pose[1]
 
         is_free = True
-        n = 1/occ_grid.grid_size
+        n = 1 / occ_grid.grid_size
 
         while is_free:
             x_ray += cos(alpha) / n
@@ -87,12 +87,12 @@ def getMeasurements(robot_pose):
                 is_free = False
                 occ_grid.markOccupiedSpace(x_ray, y_ray)
 
-    for landmark in landmarks:
-        dx = landmark.x - robot_pose[0]
-        dy = landmark.y - robot_pose[1]
+    for j in range(n_landmarks):
+        dx = landmarks[0, j] - robot_pose[0]
+        dy = landmarks[1, j] - robot_pose[1]
         r = sqrt(dx ** 2 + dy ** 2)
-
         alpha = arctan2(dy, dx)
+
         n = int(max(abs(dx), abs(dy)) / occ_grid.grid_size)
         x_ray = robot_pose[0]
         y_ray = robot_pose[1]
@@ -116,38 +116,41 @@ def getMeasurements(robot_pose):
             wall_count += wall_count_inc
 
         if add_measurement:
-            measurements.append([r+sigma* random.randn(), alpha+sigma * random.randn()])
+            measurements[:, j] = [r + sigma * random.randn(), alpha + sigma * random.randn()]
 
     return measurements
 
+def plotMap(robot_poses, measurements, pose_index, S):
+    global occ_grid, ax, updated_cells, walls, landmarks
 
-def plotMap(robot_poses, measurements, i, S):
-    global occ_grid, ax, updated_cells, walls
-
-    robot_pose = robot_poses[:, i]
     plt.cla()
+    robot_pose = robot_poses[:, pose_index]
 
     cmap = colors.ListedColormap(['grey', 'white', 'orange'])
     bounds = [-1, -.1, .1, 1]
     norm = colors.BoundaryNorm(bounds, cmap.N)
     ax.imshow(occ_grid.grid, cmap=cmap, norm=norm, extent=[0, 2.5, 2.5, 0])
 
-    for measure in measurements:
-        r = measure[0]
-        alpha = measure[1]
-        plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha)], [robot_pose[1], robot_pose[1] + r * sin(alpha)], 'g',
-                 linewidth=.4)
+    for i in range(size(measurements, 1)):
+        if measurements[0, i].any():
+            r = measurements[0, i]
+            alpha = measurements[1, i]
+            plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha)], [robot_pose[1], robot_pose[1] + r * sin(alpha)],
+                     'g', linewidth=.7)
 
     for wall in walls:
         plt.plot(wall[:2], wall[2:4], 'b', linewidth=1.5)
 
-    for landmark in landmarks:
-        plt.plot(landmark.x, landmark.y, 'go', markersize=10)
-        plt.text(landmark.x, landmark.y + .05, '(' + str(landmark.index) + ')')
+    for j in range(size(landmarks, 1)):
+        plt.plot(landmarks[0, j], landmarks[1, j], 'go', markersize=10)
+        plt.text(landmarks[0, j], landmarks[1, j] + .05, '(' + str(j) + ')')
 
-    plot_particle_set(S)
+    pf.plot_particle_set(S)
 
-    plt.plot(robot_poses[0, :], robot_poses[1, :], 'gx')
+    plt.plot(robot_poses[0, :-2], robot_poses[1, :-2], 'gx')
+    t = mpl.markers.MarkerStyle(marker='>')
+    t._transform = t.get_transform().rotate_deg(robot_pose[2] * 180 / pi)
+    plt.scatter(robot_pose[0], robot_pose[1], marker=t, s=40, color='g')
 
     plt.axis(axis)
     plt.xlabel('x')
@@ -157,7 +160,7 @@ def plotMap(robot_poses, measurements, i, S):
 
 
 def initMap():
-    global occ_grid, ax, walls, path
+    global occ_grid, ax, walls, path, landmarks, n_landmarks
     f = open("map.txt", "r")
     walls = []
     for row in f:
@@ -183,7 +186,7 @@ def initMap():
             i, j = occ_grid.getCellCoordinates(x, y)
             for ii in range(-1, 2):
                 for jj in range(-1, 2):
-                    occ_grid.true_grid[j+jj, i+ii] = 1
+                    occ_grid.true_grid[j + jj, i + ii] = 1
 
     f = open("landmarks.txt", "r")
     i = 0
@@ -191,50 +194,84 @@ def initMap():
         if '#' not in row:
             x = float(row.split(',')[0])
             y = float(row.split(',')[1])
-            landmarks.append(Landmark(x, y, i))
+            if i == 0:
+                landmarks = array([[x], [y]])
+            else:
+                landmarks = concatenate((landmarks, array([[x], [y]])), axis=1)
             i += 1
+    n_landmarks = i
 
     f = open("path.txt", "r")
     distances = []
-    anglular_velocities = []
+    angular_velocities = []
     for row in f:
         if '#' not in row:
             distances.append(float(row.split(',')[0]))
-            anglular_velocities.append(float(row.split(',')[1]))
-    path = [distances, anglular_velocities]
+            angular_velocities.append(float(row.split(',')[1]))
+    path = [distances, angular_velocities]
+
 
 def particleFilterSlam():
+    global path, n_landmarks
 
-    global path
-
-    x0, y0, theta0 = 0.25, .25, pi/2
+    x0, y0, theta0 = 0.25, .25, pi / 2
     distances = path[0]
     a_velocities = path[1]
     dt = 0.1
-    n_path = int(sum(distances)/dt)
-    robot_poses = zeros([3, n_path+1])
-    robot_poses[:, 0] = array([[x0], [y0], [theta0]]).T
+    n_path = int(sum(distances) / dt)
+    robot_poses = zeros([3, n_path + 1])
+    robot_poses[:, 0] = [x0, y0, theta0]
 
     velocities = ones((1, n_path))
     angular_velocities = zeros((1, n_path))
     start = 0
     for path_index in range(len(a_velocities)):
-        n = min(int(distances[path_index]/dt), n_path-start)
+        n = min(int(distances[path_index] / dt), n_path - start)
         end = start + n
-        angular_velocities[0, start:end] = a_velocities[path_index]*ones((1, n))
+        angular_velocities[0, start:end] = a_velocities[path_index] * ones((1, n))
         start = end
 
+    R = 1e-2*eye(3)
+    Q = 1e-2*eye(2)
+    lambda_Psi = 0 # 1e-20
 
-    S = particle_init(axis, 100)
+    S = pf.particle_init(axis, 100)
+    M = size(S, 1)
 
-    for i in range(0, n_path):
+    for i in range(0, 10):  # n_path):
         measurements = getMeasurements(robot_poses[:, i])
-
-        # S = systematic_resample(S)
-
         plotMap(robot_poses, measurements, i, S)
-        robot_poses = motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
 
+        W = zeros((2 * size(measurements, 1), M))
+        particle_measurements = zeros((2 * size(measurements, 1), M))
+        particle_measurements[:, :] = reshape(measurements, (size(measurements), 1), order='F')
+        seen_landmarks_indices = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2*n_landmarks), order='F'))
+        seen = sum(measurements.any(axis=0))
+        var = tile(diag(Q), (M, len(measurements.any(axis=0)))).T
+        rand= random.rand(len(measurements.any(axis=0))*size(diag(Q)), M)
+        noise = tile(diag(Q), (M, sum(measurements.any(axis=0)))).T * random.rand(sum(measurements.any(axis=0))*size(diag(Q)), M)
+        particle_measurements[seen_landmarks_indices, :] += noise
+        # feature1_indices = arange(0, 2*n_landmarks, 2)
+        # feature2_indices = feature1_indices + 1
+        s = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2*n_landmarks), order='F')[0])[0]
+        feature1_indices = s[where(mod(s, 2) == 0)[0]]
+        feature2_indices = feature1_indices + 1
+        W[feature1_indices, :] = S[0, :] + particle_measurements[feature1_indices, :] * cos(S[2, :] + particle_measurements[feature2_indices, :])
+        W[feature2_indices, :] = S[1, :] + particle_measurements[feature1_indices, :] * sin(S[2, :] + particle_measurements[feature2_indices, :])
+
+        #print(S[2, :50])
+        robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
+        S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
+        #print(S[2, :50])
+
+        psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
+        #print(shape(psi))
+        S = pf.weight(S, psi, outlier)
+        #print(S[2, :50])
+        S = pf.systematic_resample(S)
+        #print(S[2, :50])
+
+    print('Done')
 
 
 def main():
@@ -247,6 +284,5 @@ def main():
 
 
 if __name__ == '__main__':
-    #random.seed(0)
     main()
     plt.show()
