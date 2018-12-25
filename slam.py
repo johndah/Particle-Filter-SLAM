@@ -121,7 +121,7 @@ def getMeasurements(robot_pose):
     return measurements
 
 
-def plotMap(robot_poses, measurements, pose_index, S):
+def plotMap(robot_poses, measurements, pose_index, S, W):
     global occ_grid, ax, updated_cells, walls, landmarks
 
     plt.cla()
@@ -147,6 +147,7 @@ def plotMap(robot_poses, measurements, pose_index, S):
         plt.text(landmarks[0, j], landmarks[1, j] + .05, '(' + str(j) + ')')
 
     pf.plot_particle_set(S)
+    pf.plot_landmark_particle_set(W)
 
     plt.plot(robot_poses[0, :-2], robot_poses[1, :-2], 'gx')
     t = mpl.markers.MarkerStyle(marker='>')
@@ -261,20 +262,16 @@ def particleFilterSlam():
 
     for i in range(0, 25):  # n_path):
         measurements = getMeasurements(robot_poses[:, i])
-        plotMap(robot_poses, measurements, i, S)
+        W = getLandmarkParticles(S, measurements, Q )
 
-        W = getLandmarkParticles(S, measurements, Q)
-        # print(S[2, :50])
+        plotMap(robot_poses, measurements, i, S, W)
+
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
-        # print(S[2, :50])
 
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
-        # print(shape(psi))
         S = pf.weight(S, psi, outlier)
-        # print(S[2, :50])
         S = pf.systematic_resample(S)
-        # print(S[2, :50])
 
     print('Done')
 
