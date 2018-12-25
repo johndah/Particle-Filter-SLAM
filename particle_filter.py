@@ -2,8 +2,24 @@ from numpy import *
 import matplotlib.pyplot as plt
 from motion import *
 
+def plot_particle_set(S):
+    #  Plots particle set S in figure figure
+    #  S has dimensions 4xM where M in the number of particles
+    plt.scatter(S[0,:],S[1,:])
 
-def particle_init(window, M, start_pose = []):
+
+def init_parameter():  # Initialization fo parameters in particle fitler 
+	Q = diag([1e-2, 1e-2, 1e-1])  # Measurement noise
+	R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
+	lambda_Psi = 0.01  # Outlier threshold
+	M = 1e3  # Number of particles
+	start_pose = array([[0,0,0]])
+	S = particle_init(M, start_pose)  # Particle set
+
+	return Q, R, lambda_Psi, S
+
+
+def particle_init(M, window = array([[0,1,0,1]]), start_pose = []):
     # initializes the particle set of M particles inside given window
     # window should be  [x_min, x_max, y_min, y_max]
     sigma_xy = 1e-1  # Variance in starting position for known pose for x and y
@@ -21,8 +37,27 @@ def particle_init(window, M, start_pose = []):
     return S
 
 
-def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
+def measurement_model(W, S): 
+    # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
+    # S is the particle set. Shape [4, particles]
+    # h is predicted measurements. Shape [2*landmarks, particles], [r, theta]
+    if not W:  # If W is empty nothing should happen
+    	h = []
+    	return h	
 
+    no_landmarks = int(W.shape[0]/2)
+    M = W.shape[1]  # Number of particles
+    xindices = arange(0, 2*no_landmarks,2)
+    yindices = xindices + 1
+    h = array(zeros([2*no_landmarks, M]))
+
+    h[xindices, :] = array(sqrt(square(W[xindices, :]-S[0, :]) + square(W[yindices, :] - S[1, :])))  # Distance to landmarks
+    h[yindices, :] = arctan2(W[yindices, :] - S[2,:], W[xindices, :] - S[1,:] - S[3,:])  # Angle to landmarks
+    h[yindices, :] = mod(h[yindices, :]+pi, 2 * pi)-pi
+    return h
+
+def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
+	''' This function should add landmarks to the maps if a new landmark is detected '''
     n = shape(measurements, 2)
     M = shape(S, 2)
     N = shape(weights, 2)
@@ -52,10 +87,15 @@ def associate_known(S, measurements, W, lambda_Psi, Q, known_associations):
 
     return outlier, psi
 
-def plot_particle_set(S):
-    #  Plots particle set S in figure figure
-    #  S has dimensions 4xM where M in the number of particles
-    plt.scatter(S[0,:],S[1,:])
+
+def weight(S, Psi, outlier):
+    # Adds weights to the last row in S
+    # Psi in on the [n, M] where n is the number of measurements an M is the number of particles
+    # outlier contains information about measurement outliers
+    pz = prod(Psi[where(1-outlier)], 1)  # Non normalized weights without outliers
+    w = pz*1/sum(pz)  # Normalization
+    S[4,:] = w
+    return S
 
 
 def systematic_resample(S, W):  
@@ -73,30 +113,6 @@ def systematic_resample(S, W):
 
     return S_new, W_new
 
-
-def weight(S, Psi, outlier):
-    # Adds weights to the last row in S
-    # Psi in on the [n, M] where n is the number of measurements an M is the number of particles
-    # outlier contains information about measurement outliers
-    pz = prod(Psi[where(1-outlier)], 1)  # Non normalized weights without outliers
-    w = pz*1/sum(pz)  # Normalization
-    S[4,:] = w
-    return S
-
-def measurement_model(W, S):
-    # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
-    # S is the particle set. Shape [4, particles]
-    # h is predicted measurements. Shape [2*landmarks, particles], [r, theta]
-    no_landmarks = int(W.shape[0]/2)
-    M = W.shape[1]  # Number of particles
-    xindices = arange(0, 2*no_landmarks,2)
-    yindices = xindices + 1
-    h = array(zeros([2*no_landmarks, M]))
-
-    h[xindices, :] = array(sqrt(square(W[xindices, :]-S[0, :]) + square(W[yindices, :] - S[1, :])))  # Distance to landmarks
-    h[yindices, :] = arctan2(W[yindices, :] - S[2,:], W[xindices, :] - S[1,:] - S[3,:])  # Angle to landmarks
-    h[yindices, :] = mod(h[yindices, :]+pi, 2 * pi)-pi
-    return h
 
 def measurement_model_test():
     S = array([array([1,2,3,4]), array([-1,-2,-3,-4]),array( [0.1,0.2,0.3,0.4]), array([1,1,1,1])])
@@ -129,6 +145,9 @@ def systematic_resample_test():
     print(S)
     print('W')
     print(W)
+
+
+
 
 systematic_resample_test()
 
