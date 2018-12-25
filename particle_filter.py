@@ -99,9 +99,7 @@ for j = 1:M
     S(4,j) = 1/M;
 end
 
-
 '''
-
 
 def measurement_model(S, W):
     # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
@@ -134,6 +132,40 @@ def weight(S, Psi, outlier):
     S[3, :] = w
 
     return S
+
+def measurement_model_test():
+    S = array([array([1, 2, 3, 4]), array([-1, -2, -3, -4]), array([0.1, 0.2, 0.3, 0.4]), array([1, 1, 1, 1])])
+    W = array([array([1, 2, 3, 4]), array([1, 2, 3, 4]), array([-1, -2, -3, -4]),
+               array([-1, -2, -3, -4])])  # 4 particles and 2 landmark
+    W = W.T
+
+    h = measurement_model(W, S)
+
+
+def motion_model_prediction_test():
+    window = [0, 5, 0, 5]
+    S = particle_init(window, 100)
+    fig1 = plt.figure()
+    plot_particle_set(S, fig1)
+
+    R = diag([0, 0, 0])
+    delta_t = 1
+    S = motion_model_prediction(1, 0, S, R, delta_t)
+    fig2 = plt.figure()
+    plot_particle_set(S, fig2)
+    plt.show(fig1)
+
+
+def systematic_resample_test():
+    S = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
+    W = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
+    # print(S)
+    S, W = systematic_resample(S, W)
+    print('S')
+    print(S)
+    print('W')
+    print(W)
+
 
 
 def main():
