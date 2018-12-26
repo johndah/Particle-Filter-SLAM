@@ -161,7 +161,7 @@ def plotMap(robot_poses, measurements, pose_index, S, W):
     plt.pause(1e-5)
 
 def init_parameter():  # Initialization fo parameters in particle fitler 
-    Q = diag([1e-2, 1e-2, 1e-1])  # Measurement noise
+    Q = diag([1e-2, 1e-1])  # Measurement noise
     R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
     lambda_Psi = 0.01  # Outlier threshold
     M = 1e3  # Number of particles
