@@ -275,7 +275,7 @@ def particleFilterSlam():
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
 
-        S = pf.systematic_resample(S)
+        S, W = pf.systematic_resample(S, W)
 
     print('Done')
 
