@@ -4,7 +4,7 @@ from matplotlib import colors
 import motion
 import particle_filter as pf
 import matplotlib as mpl
-
+import time as time
 axis = [0, 2.5, 0, 2.5]
 
 
@@ -257,6 +257,7 @@ def getOdometry(start_pose, dt):
 def init_parameter():  # Initialization fo parameters in particle fitler
     x0, y0, theta0 = 0.25, .25, pi / 2
     Q = 1e-2 * eye(2)  # Measurement noise
+    Qw = 1e-2 * eye(2)  # Map resampling noise
     R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
     lambda_Psi = 0.01  # Outlier threshold
     M = 100  # Number of particles
@@ -265,16 +266,16 @@ def init_parameter():  # Initialization fo parameters in particle fitler
     W = zeros((2 * n_landmarks, M))
     dt = 0.1
 
-    return start_pose, Q, R, lambda_Psi, S, W, dt
+    return start_pose, Q, Qw, R, lambda_Psi, S, W, dt
 
 
 def particleFilterSlam():
     global path, n_landmarks
 
-    start_pose, Q, R, lambda_Psi, S, W, dt = init_parameter()
+    start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
 
-    for i in range(0, 10):  # n_path):
+    for i in range(0, 2):  # n_path):
 
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
@@ -287,7 +288,9 @@ def particleFilterSlam():
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
 
-        S, W = pf.systematic_resample(S, W)
+        S, W = pf.systematic_resample(S, W, Qw)
+
+        time.sleep(1)
 
     print('Done')
 

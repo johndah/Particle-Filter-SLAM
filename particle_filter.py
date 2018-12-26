@@ -74,43 +74,33 @@ def plot_landmark_particle_set(W):
 
     plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05])
 
-def systematic_resample(S, W):  # Must include map resample
-    M = S.shape[1]
-    cdf = cumsum(S[3, :])
+def systematic_resample(S, W, Qw):  # Must include map resample
+	''' Qw is the noise that get added to the maps in the resampling step '''
+	M = S.shape[1]
+	cdf = cumsum(S[3, :])
 
-    # print('rand')
-    # print(rand)!
-    random.seed(0)
-    rand = random.uniform(0, 1 / M, 1)
-    S_new = zeros(S.shape)
-    W_new = zeros(W.shape)
+	# print('rand')
+	# print(rand)!
+	random.seed(0)
+	rand = random.uniform(0, 1 / M, 1)
+	S_new = zeros(S.shape)
+	W_new = zeros(W.shape)
 
-    for i in range(M):
-        # print(cdf >= rand + (i ) / M)
-        # c = argmax(cdf >= rand + (i) / M)
-        c = where(cdf >= rand + (i) / M)[0][0]
-        # print('c')
-        # print(cdf)
-        # print(where(cdf >= rand + (i) / M)[0])
-        # print(c)
-        S_new[:, i] = S[:, c]
-        S_new[3, i] = 1/M
-        W_new[:, i] = W[:, c]
+	s = where(W.any(axis=1))[0]
+	feature1_indices = s[where(mod(s, 2) == 0)[0]]
+	feature2_indices = feature1_indices + 1
 
-    return S_new, W_new
+	for i in range(M):
+		c = where(cdf >= rand + (i) / M)[0][0]
+		S_new[:, i] = S[:, c]
+		S_new[3, i] = 1/M
+		map_noise = dot(Qw,random.randn(2,1))
+		#it may be better to add idependent noise to all landmarks
+		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise[0, 0]  
+		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise[1, 0]		
 
-'''
-M = size(S_bar, 2);
-cdf = cumsum(S_bar(4, :));
-S = zeros(size(S_bar));
-r0 = rand()/M;
-for j = 1:M
-    [~, i] = find(cdf >= r0 + (j-1)/M, 1);
-    S(:,j) = S_bar(:,i);
-    S(4,j) = 1/M;
-end
+	return S_new, W_new
 
-'''
 
 '''
 W = zeros((2 * size(measurements, 1), M))
