@@ -262,7 +262,7 @@ def init_parameter():  # Initialization fo parameters in particle fitler
     lambda_Psi = 0.01  # Outlier threshold
     M = 100  # Number of particles
     start_pose = [x0, y0, theta0]
-    S = pf.particle_init(axis, M, start_pose)  # Particle set
+    S = pf.particle_init(M, start_pose)  # Particle set
     W = zeros((2 * n_landmarks, M))
     dt = 0.1
 
