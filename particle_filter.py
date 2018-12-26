@@ -70,9 +70,8 @@ def systematic_resample(S, W, Qw):  # Must include map resample
 	''' Qw is the noise that get added to the maps in the resampling step '''
 	M = S.shape[1]
 	cdf = cumsum(S[3, :])
+	half_of_landmarks = int(W.shape[0]/4)
 
-	# print('rand')
-	# print(rand)!
 	random.seed(0)
 	rand = random.uniform(0, 1 / M, 1)
 	S_new = zeros(S.shape)
@@ -81,15 +80,15 @@ def systematic_resample(S, W, Qw):  # Must include map resample
 	s = where(W.any(axis=1))[0]
 	feature1_indices = s[where(mod(s, 2) == 0)[0]]
 	feature2_indices = feature1_indices + 1
-
 	for i in range(M):
 		c = where(cdf >= rand + (i) / M)[0][0]
 		S_new[:, i] = S[:, c]
 		S_new[3, i] = 1/M
-		map_noise = dot(Qw,random.randn(2,1))
+		map_noise_x = Qw[0,0]*random.randn(2,len(feature1_indices))
+		map_noise_y = Qw[1,1]*random.randn(2,len(feature2_indices))
 		#it may be better to add idependent noise to all landmarks
-		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise[0, 0]  
-		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise[1, 0]		
+		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise_x[0, :]  
+		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise_y[1, :]		
 
 	return S_new, W_new
 
