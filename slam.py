@@ -160,6 +160,17 @@ def plotMap(robot_poses, measurements, pose_index, S, W):
     plt.title('Map')
     plt.pause(1e-5)
 
+def init_parameter():  # Initialization fo parameters in particle fitler 
+    Q = diag([1e-2, 1e-1])  # Measurement noise
+    R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
+    lambda_Psi = 0.01  # Outlier threshold
+    M = 1e3  # Number of particles
+    start_pose = array([[0,0,0]])
+    S = particle_init(M, start_pose)  # Particle set
+
+    return Q, R, lambda_Psi, S
+
+
 
 def initMap():
     global occ_grid, ax, walls, path, landmarks, n_landmarks
@@ -234,13 +245,13 @@ def getLandmarkParticles(S, measurements, Q, W):
     return W
 
 
-def getOdometry(start_pose, dt):
+def getOdometry(x0, y0, theta0, dt):
     distances = path[0]
     a_velocities = path[1]
     n_path = int(sum(distances) / dt)
 
     robot_poses = zeros([3, n_path + 1])
-    robot_poses[:, 0] = start_pose
+    robot_poses[:, 0] = [x0, y0, theta0]
 
     velocities = ones((1, n_path))
     angular_velocities = zeros((1, n_path))
@@ -253,26 +264,21 @@ def getOdometry(start_pose, dt):
 
     return robot_poses, velocities, angular_velocities
 
-
-def init_parameter():  # Initialization fo parameters in particle fitler
-    x0, y0, theta0 = 0.25, .25, pi / 2
-    Q = 1e-2 * eye(2)  # Measurement noise
-    R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
-    lambda_Psi = 0.01  # Outlier threshold
-    M = 100  # Number of particles
-    start_pose = [x0, y0, theta0]
-    S = pf.particle_init(axis, M, start_pose)  # Particle set
-    W = zeros((2 * n_landmarks, M))
-    dt = 0.1
-
-    return start_pose, Q, R, lambda_Psi, S, W, dt
-
-
 def particleFilterSlam():
     global path, n_landmarks
 
-    start_pose, Q, R, lambda_Psi, S, W, dt = init_parameter()
-    robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
+    x0, y0, theta0 = 0.25, .25, pi / 2
+    dt = 0.1
+
+    robot_poses, velocities, angular_velocities = getOdometry(x0, y0, theta0, dt)
+
+    R = 1e-2 * eye(3)
+    Q = 1e-2 * eye(2)
+    lambda_Psi = 0  # 1e-20
+
+    M = 100
+    S = pf.particle_init(axis, M)
+    W = zeros((2 * n_landmarks, M))
 
     for i in range(0, 10):  # n_path):
 
