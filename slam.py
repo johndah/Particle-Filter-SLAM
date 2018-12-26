@@ -245,10 +245,9 @@ def getLandmarkParticles(S, measurements, Q, W):
     return W
 
 
-def getOdometry(x0, y0, theta0):
+def getOdometry(x0, y0, theta0, dt):
     distances = path[0]
     a_velocities = path[1]
-    dt = 0.1
     n_path = int(sum(distances) / dt)
 
     robot_poses = zeros([3, n_path + 1])
@@ -269,8 +268,9 @@ def particleFilterSlam():
     global path, n_landmarks
 
     x0, y0, theta0 = 0.25, .25, pi / 2
+    dt = 0.1
 
-    velocities, angular_velocities, robot_poses = getOdometry(x0, y0, theta0)
+    robot_poses, velocities, angular_velocities = getOdometry(x0, y0, theta0, dt)
 
     R = 1e-2 * eye(3)
     Q = 1e-2 * eye(2)
