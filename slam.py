@@ -257,6 +257,7 @@ def getOdometry(start_pose, dt):
 def init_parameter():  # Initialization fo parameters in particle fitler
     x0, y0, theta0 = 0.25, .25, pi / 2
     Q = 1e-2 * eye(2)  # Measurement noise
+    Qw = 1e-2 * eye(2)  # Map resampling noise
     R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
     lambda_Psi = 0.01  # Outlier threshold
     M = 100  # Number of particles
@@ -265,7 +266,7 @@ def init_parameter():  # Initialization fo parameters in particle fitler
     W = zeros((2 * n_landmarks, M))
     dt = 0.1
 
-    return start_pose, Q, R, lambda_Psi, S, W, dt
+    return start_pose, Q, Qw, R, lambda_Psi, S, W, dt
 
 
 def particleFilterSlam():

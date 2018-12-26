@@ -74,7 +74,8 @@ def plot_landmark_particle_set(W):
 
     plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05])
 
-def systematic_resample(S, W):  # Must include map resample
+def systematic_resample(S, W, Qw):  # Must include map resample
+	''' Qw is the noise that get added to the maps in the resampling step '''
     M = S.shape[1]
     cdf = cumsum(S[3, :])
 
@@ -95,7 +96,7 @@ def systematic_resample(S, W):  # Must include map resample
         # print(c)
         S_new[:, i] = S[:, c]
         S_new[3, i] = 1/M
-        W_new[:, i] = W[:, c]
+        W_new[:, i] = W[:, c] + dot(random.randn(2,1), Qw)
 
     return S_new, W_new
 
