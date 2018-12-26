@@ -5,7 +5,7 @@ from particle_filter import *
 def particle_filter_main():
 
 	''' Parameter initialization '''
-	Q, R, lambda_Psi, S = init_parameter()  # Parameter initialization
+	start_pose, Q, Qw, R, lambda_Psi, S, W, dt= init_parameter()  # Parameter initialization
 	print(Q)
 
 	for step in some_vector:
@@ -26,7 +26,7 @@ def particle_filter_main():
 		S = weight(S, Psi, outlier)
 		 
 		''' Resampling '''
-		S, W = Systematic_resample(S, W)  # W is the map, figure out how to noise the landmarks
+		S, W = Systematic_resample(S, W, Qw)  # W is the map, figure out how to noise the landmarks
 
 
 '''
