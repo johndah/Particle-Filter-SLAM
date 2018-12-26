@@ -68,7 +68,11 @@ def plot_particle_set(S):
 def plot_landmark_particle_set(W):
     #  Plots particle set S in figure figure
     #  S has dimensions 4xM where M in the number of particles
-    plt.scatter(W[0, :], W[1, :], marker='o', s=5, color=[.05, .3, .05])
+    s = where(W.any(axis=1))[0]
+    feature1_indices = s[where(mod(s, 2) == 0)[0]]
+    feature2_indices = feature1_indices + 1
+
+    plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05])
 
 def systematic_resample(S):  # Must include map resample
     M = S.shape[1]
@@ -105,15 +109,43 @@ end
 
 '''
 
+'''
+W = zeros((2 * size(measurements, 1), M))
+    particle_measurements = zeros((2 * size(measurements, 1), M))
+    particle_measurements[:, :] = reshape(measurements, (size(measurements), 1), order='F')
+    seen_landmarks_indices = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F'))
+    noise = tile(diag(Q), (M, sum(measurements.any(axis=0)))).T * random.rand(
+        sum(measurements.any(axis=0)) * size(diag(Q)), M)
+    particle_measurements[seen_landmarks_indices, :] += noise
+    s = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F')[0])[0]
+    feature1_indices = s[where(mod(s, 2) == 0)[0]]
+    feature2_indices = feature1_indices + 1
+    W[feature1_indices, :] = S[0, :] + particle_measurements[feature1_indices, :] * cos(
+        S[2, :] + particle_measurements[feature2_indices, :])
+    W[feature2_indices, :] = S[1, :] + particle_measurements[feature1_indices, :] * sin(
+        S[2, :] + particle_measurements[feature2_indices, :])
+'''
+
 def measurement_model(S, W):
     # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
     # S is the particle set. Shape [4, particles]
     # h is predicted measurements. Shape [2*landmarks, particles]
     no_landmarks = int(W.shape[0] / 2)
     M = S.shape[1]
-    xindices = arange(0, no_landmarks, 2)
-    yindices = xindices + 1
+    # xindices = arange(0, no_landmarks, 2)
+    # yindices = xindices + 1
 
+    s = where(W.any(axis=1))[0]
+    feature1_indices = s[where(mod(s, 2) == 0)[0]]
+    feature2_indices = feature1_indices + 1
+
+    h = zeros((2 * no_landmarks, M))
+    h[feature1_indices, :] = sqrt(square(W[feature1_indices, :] - S[0, :]) + square(W[feature2_indices, :] - S[1, :]))
+    h[feature2_indices, :] = arctan2(W[feature2_indices, :] - S[1, :], W[feature1_indices, :] - S[0, :]) - S[2, :]
+
+    h[feature2_indices, :] = mod(h[feature2_indices, :] + pi, 2 * pi) - pi
+
+    '''
     # inputa varannan
     h = zeros((2 * no_landmarks, M))
     h[xindices, :] = sqrt(square(W[xindices, :] - S[0, :]) + square(W[yindices, :] - S[1, :]))
@@ -122,6 +154,7 @@ def measurement_model(S, W):
     # print(shape(h))
 
     h[yindices, :] = mod(h[yindices, :] + pi, 2 * pi) - pi
+    '''
 
     return h
 

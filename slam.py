@@ -136,7 +136,7 @@ def plotMap(robot_poses, measurements, pose_index, S, W):
         if measurements[0, i].any():
             r = measurements[0, i]
             alpha = measurements[1, i]
-            plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha)], [robot_pose[1], robot_pose[1] + r * sin(alpha)],
+            plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha + robot_pose[2])], [robot_pose[1], robot_pose[1] + r * sin(alpha + robot_pose[2])],
                      'g', linewidth=.7)
 
     for wall in walls:
@@ -213,10 +213,9 @@ def initMap():
     path = [distances, angular_velocities]
 
 
-def getLandmarkParticles(S, measurements, Q):
+def getLandmarkParticles(S, measurements, Q, W):
     M = size(S, 1)
 
-    W = zeros((2 * size(measurements, 1), M))
     particle_measurements = zeros((2 * size(measurements, 1), M))
     particle_measurements[:, :] = reshape(measurements, (size(measurements), 1), order='F')
     seen_landmarks_indices = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F'))
@@ -224,6 +223,7 @@ def getLandmarkParticles(S, measurements, Q):
         sum(measurements.any(axis=0)) * size(diag(Q)), M)
     particle_measurements[seen_landmarks_indices, :] += noise
     s = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F')[0])[0]
+    s = intersect1d(s, where(1 - W.any(axis=1)))
     feature1_indices = s[where(mod(s, 2) == 0)[0]]
     feature2_indices = feature1_indices + 1
     W[feature1_indices, :] = S[0, :] + particle_measurements[feature1_indices, :] * cos(
@@ -258,19 +258,23 @@ def particleFilterSlam():
     Q = 1e-2 * eye(2)
     lambda_Psi = 0  # 1e-20
 
-    S = pf.particle_init(axis, 100)
+    M = 100
+    S = pf.particle_init(axis, M)
+    W = zeros((2 * n_landmarks, M))
 
-    for i in range(0, 25):  # n_path):
-        measurements = getMeasurements(robot_poses[:, i])
-        W = getLandmarkParticles(S, measurements, Q )
-
-        plotMap(robot_poses, measurements, i, S, W)
+    for i in range(0, 10):  # n_path):
 
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
 
+        measurements = getMeasurements(robot_poses[:, i])
+        W = getLandmarkParticles(S, measurements, Q, W)
+
+        plotMap(robot_poses, measurements, i, S, W)
+
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
+
         S = pf.systematic_resample(S)
 
     print('Done')
