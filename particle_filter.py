@@ -91,33 +91,16 @@ def systematic_resample(S, W, Qw):  # Must include map resample
 	feature2_indices = feature1_indices + 1
 
 	for i in range(M):
-		# print(cdf >= rand + (i ) / M)
-		# c = argmax(cdf >= rand + (i) / M)
 		c = where(cdf >= rand + (i) / M)[0][0]
-		# print('c')
-		# print(cdf)
-		# print(where(cdf >= rand + (i) / M)[0])
-		# print(c)
 		S_new[:, i] = S[:, c]
 		S_new[3, i] = 1/M
 		map_noise = dot(Qw,random.randn(2,1))
-		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise[0, 0]
+		#it may be better to add idependent noise to all landmarks
+		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise[0, 0]  
 		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise[1, 0]		
 
 	return S_new, W_new
 
-'''
-M = size(S_bar, 2);
-cdf = cumsum(S_bar(4, :));
-S = zeros(size(S_bar));
-r0 = rand()/M;
-for j = 1:M
-    [~, i] = find(cdf >= r0 + (j-1)/M, 1);
-    S(:,j) = S_bar(:,i);
-    S(4,j) = 1/M;
-end
-
-'''
 
 '''
 W = zeros((2 * size(measurements, 1), M))
