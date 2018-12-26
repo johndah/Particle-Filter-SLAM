@@ -272,7 +272,7 @@ def init_parameter():  # Initialization fo parameters in particle fitler
 def particleFilterSlam():
     global path, n_landmarks
 
-    start_pose, Q, R, lambda_Psi, S, W, dt = init_parameter()
+    start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
 
     for i in range(0, 10):  # n_path):
@@ -288,7 +288,7 @@ def particleFilterSlam():
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
 
-        S, W = pf.systematic_resample(S, W)
+        S, W = pf.systematic_resample(S, W, Qw)
 
     print('Done')
 
