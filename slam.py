@@ -255,7 +255,7 @@ def getOdometry(start_pose, dt):
 
 
 def init_parameter():  # Initialization fo parameters in particle fitler
-    x0, y0, theta0 = 0.25, .25, pi / 2
+    x0, y0, theta0 = 0.25, 0.25, pi / 2
     Q = 1e-2 * eye(2)  # Measurement noise
     Qw = 1e-2 * eye(2)  # Map resampling noise
     R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
@@ -289,7 +289,6 @@ def particleFilterSlam():
         S = pf.weight(S, psi, outlier)
 
         S, W = pf.systematic_resample(S, W, Qw)
-
         time.sleep(1)
 
     print('Done')
