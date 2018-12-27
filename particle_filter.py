@@ -3,21 +3,13 @@ import matplotlib.pyplot as plt
 from motion import *
 import matplotlib as mpl
 
-def particle_init(window, M, start_pose=[]):
-    # initializes the particle set of M particles inside given window
-    # window should be  [x_min, x_max, y_min, y_max]
-    sigma_xy = 0*1e-1  # Variance in starting position for known pose for x and y
-    sigma_theta = 0*1e-1  # Variance in starting position for known pose for theta
+def particle_init(M, start_pose=[]):
+    # initializes the particle set of M particles all at the starting pose
     S = zeros([4, M])
-    if not start_pose:  # If start_pose is empty, wont be used
-        S[0, :] = random.uniform(window[0], window[1], [1, M])
-        S[1, :] = random.uniform(window[2], window[3], [1, M])
-        S[2, :] = random.uniform(-pi, pi, [1, M])
-    else:
-        S = zeros([4, M])  # If start_pose is given the particle set will be gaussians around the starting position
-        S[0, :] = start_pose[0] + random.randn(1, M) * sigma_xy
-        S[1, :] = start_pose[1] + random.randn(1, M) * sigma_xy
-        S[2, :] = start_pose[2] + random.randn(1, M) * sigma_theta
+    S[0, :] = start_pose[0] * ones([1, M])
+    S[1, :] = start_pose[1] * ones([1, M])
+    S[2, :] = start_pose[2] * ones([1, M])
+
     return S
 
 
@@ -79,8 +71,6 @@ def systematic_resample(S, W, Qw):  # Must include map resample
 	M = S.shape[1]
 	cdf = cumsum(S[3, :])
 
-	# print('rand')
-	# print(rand)!
 	random.seed(0)
 	rand = random.uniform(0, 1 / M, 1)
 	S_new = zeros(S.shape)
@@ -94,10 +84,11 @@ def systematic_resample(S, W, Qw):  # Must include map resample
 		c = where(cdf >= rand + (i) / M)[0][0]
 		S_new[:, i] = S[:, c]
 		S_new[3, i] = 1/M
-		map_noise = dot(Qw,random.randn(2,1))
+		map_noise_x = Qw[0,0]*random.randn(2,len(feature1_indices))
+		map_noise_y = Qw[1,1]*random.randn(2,len(feature2_indices))
 		#it may be better to add idependent noise to all landmarks
-		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise[0, 0]  
-		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise[1, 0]		
+		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise_x[0, :]
+		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise_y[1, :]
 
 	return S_new, W_new
 
@@ -197,19 +188,7 @@ def systematic_resample_test():
     print(W)
 
 
-
-def main():
-    S = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
-    # print(S)
-    S = systematic_resample(S)
-    # print(S)
-
-
-if __name__ == '__main__':
-    main()
-
-'''
-def main():
+def motion_model_prediction_test():
     window = [0,5,0,5]
     S = particle_init(window, 100)
     fig1 = plt.figure()
@@ -221,4 +200,14 @@ def main():
     fig2 = plt.figure()
     plot_particle_set(S, fig2)
     plt.show(fig1)
-    '''
+
+
+def main():
+    S = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
+    # print(S)
+    #S = systematic_resample(S)
+    # print(S)
+
+if __name__ == '__main__':
+    main()
+
