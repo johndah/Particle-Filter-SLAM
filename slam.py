@@ -275,7 +275,7 @@ def particleFilterSlam():
     start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
 
-    for i in range(0, 2):  # n_path):
+    for i in range(0, size(robot_poses, 1)-1):
 
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
@@ -290,7 +290,7 @@ def particleFilterSlam():
 
         S, W = pf.systematic_resample(S, W, Qw)
 
-        time.sleep(1)
+        #time.sleep(1)
 
     print('Done')
 
