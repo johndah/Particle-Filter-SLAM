@@ -5,8 +5,6 @@ import motion
 import particle_filter as pf
 import matplotlib as mpl
 import time as time
-axis = [0, 2.5, 0, 2.5]
-
 
 class Landmark(object):
 

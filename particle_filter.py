@@ -209,5 +209,6 @@ def main():
     # print(S)
 
 if __name__ == '__main__':
+    random.seed(0)
     main()
 
