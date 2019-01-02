@@ -46,7 +46,10 @@ def plot_particle_set(S):
     for i in range(size(S, 1)):
         t = mpl.markers.MarkerStyle(marker='>')
         t._transform = t.get_transform().rotate_deg(S[2, i]*180/pi)
-        plt.scatter(S[0, i], S[1, i], marker=t, s=20, color='b')
+        if i > 0:
+            plt.scatter(S[0, i], S[1, i], marker=t, s=20, color='b')
+        else:
+            plt.scatter(S[0, i], S[1, i], marker=t, s=20, color='b', label='Robot particles')
 
 def plot_landmark_particle_set(W):
     #  Plots particle set S in figure figure
@@ -55,7 +58,7 @@ def plot_landmark_particle_set(W):
     feature1_indices = s[where(mod(s, 2) == 0)[0]]
     feature2_indices = feature1_indices + 1
 
-    plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05])
+    plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05], label='Landmark particles')
 
 def systematic_resample(S, W, Qw, measurements):  # Must include map resample
     ''' Qw is the noise that get added to the maps in the resampling step '''
