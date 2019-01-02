@@ -326,14 +326,22 @@ def particleFilterSlam():
         S, W = pf.systematic_resample(S, W, Qw, measurements)
 
         # time.sleep(1)
-    diff = sqrt(square(robot_estimates[0, -1] - robot_poses[0, -1]) + square(robot_estimates[1, -1] - robot_poses[1, -1]))
+    diff = array([sqrt(square(robot_estimates[0, :] - robot_poses[0, :]) + square(robot_estimates[1, :] - robot_poses[1, :]))])
+    print('diff.shape')
+    print(diff.shape)
+    fig2 = plt.figure(2)
+    figure2 = fig2.gca()
+    figure2.plot(diff[0,0:-2])
+    plt.xlabel('Step')
+    plt.ylabel('Error')
+    plt.show()
 
     print('estimates')
     print(robot_estimates[:, 0:5])
     print('real poses')
     print(robot_poses[:, 0:5])
     print('Error in final position')
-    print(diff)
+    print(diff[:,-2:])
     print('Done')
 
 
