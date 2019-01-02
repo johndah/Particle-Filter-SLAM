@@ -131,7 +131,7 @@ def getMeasurements(robot_pose, robot_estimate, S):
     return measurements
 
 
-def plotMap(robot_poses, robot_estimates, measurements, pose_index, S, W):
+def plotMap(robot_poses, robot_estimates, only_ordometry, measurements, pose_index, S, W):
     global occ_grid, ax, updated_cells, walls, landmarks
 
     plt.cla()
@@ -163,6 +163,8 @@ def plotMap(robot_poses, robot_estimates, measurements, pose_index, S, W):
     plt.plot(robot_poses[0, :-2], robot_poses[1, :-2], 'gx')
 
     plt.plot(robot_estimates[0, :-2], robot_estimates[1, :-2], 'bx')
+
+    plt.plot(only_ordometry[0, :-2], only_ordometry[1, :-2], 'rx')
 
     t = mpl.markers.MarkerStyle(marker='>')
     t._transform = t.get_transform().rotate_deg(robot_pose[2] * 180 / pi)
@@ -312,7 +314,7 @@ def particleFilterSlam():
         measurements = getMeasurements(robot_poses[:, i], robot_estimates[:, i], S)
         W = getLandmarkParticles(S, measurements, Q, W)
 
-        plotMap(robot_poses, robot_estimates, measurements, i, S, W)
+        plotMap(robot_poses, robot_estimates, only_ordometry, measurements, i, S, W)
 
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
