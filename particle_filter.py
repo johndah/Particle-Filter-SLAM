@@ -28,10 +28,11 @@ def associate_known(S, measurements, W, lambda_Psi, Q):
 
     q = tile(diag(Q), (M, n_landmarks)).T
     # q = tile(flip(array([diag(Q)]), axis=1), [1, M])
-    nu2 = nu ** 2 / q  # Assuming Q is 2x2
+    nu2 = nu ** 2 / (q)  # Assuming Q is 2x2
     d = nu2[feature1_indices, :] + nu2[feature2_indices, :]
 
-    psi = 1 / (2 * pi * linalg.det(Q) ** .5) * exp(-.5 * d)
+    psi = 1 / (2 * pi * linalg.det(Q)) ** -.5 * exp(-.5 * d)
+
     seen_landmarks_indices = where(1 - measurements.any(axis=0))
     psi[seen_landmarks_indices, :] = 0
     outlier = mean(psi, axis=1) <= lambda_Psi
@@ -70,68 +71,30 @@ def systematic_resample(S, W, Qw, measurements):  # Must include map resample
     ''' Qw is the noise that get added to the maps in the resampling step '''
     M = S.shape[1]
     cdf = cumsum(S[3, :])
-    half_of_landmarks = int(W.shape[0]/4)
 
     rand = random.uniform(0, 1 / M, 1)
-    # S_new = zeros(S.shape)
-    # W_new = zeros(W.shape)
-
-    s = where(W.any(axis=1))[0]
-    feature1_indices = s[where(mod(s, 2) == 0)[0]]
-    feature2_indices = feature1_indices + 1
 
     indices_seen = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * size(measurements, 1)), order='F')[0])[0]
     s = intersect1d(indices_seen, where(W.any(axis=1)))
     feature1_indices_seen = s[where(mod(s, 2) == 0)[0]]
     feature2_indices_seen = feature1_indices_seen + 1
 
-    # s = intersect1d(indices_seen, where(1 - W.any(axis=1)))
-    # feature1_indices_not_seen = s[where(mod(s, 2) == 0)[0]]
-    # feature2_indices_not_seen = feature1_indices_not_seen + 1
-
     for i in range(M):
-        c = where(cdf >= rand + (i) / M)[0][0]
+        c = where(cdf >= rand + i / M)[0][0]
         S[:, i] = S[:, c]
         S[3, i] = 1/M
 
-        #noise = zeros((size(W, 0), 1))
-        # noise[feature1_indices_seen, :] = tile(Qw[0, 0], (1, sum(measurements.any(axis=0)))).T * random.rand(
-        #   sum(measurements.any(axis=0)), 1)
-        # noise[feature2_indices_seen, :] = tile(Qw[1, 1], (1, sum(measurements.any(axis=0)))).T * random.rand(
-         #   sum(measurements.any(axis=0)), 1)
-
-        # a1 = array([W[:, c]]).T
-        # rad = noise[:]
-        noise = tile(diag(Qw), (1, sum(measurements.any(axis=0)))).T * random.rand(
-            2*sum(measurements.any(axis=0)), 1)
+        a = measurements[0, measurements.any(axis=0)]
+        distances = reshape(tile(measurements[0, measurements.any(axis=0)], (2, 1)).T, (1, 2*sum(measurements.any(axis=0))), order='C').T
+        where(distances < 1, 0, distances)
+        distance_factor = exp(-distances**2/2)
+        Qw_shaped = tile(diag(Qw), (1, sum(measurements.any(axis=0)))).T
+        noise = distance_factor * Qw_shaped * random.randn(2*sum(measurements.any(axis=0)), 1)
         W[feature1_indices_seen, i] = W[feature1_indices_seen, c] + noise[arange(0, size(noise), 2), 0]
         W[feature2_indices_seen, i] = W[feature2_indices_seen, c] + noise[arange(0, size(noise), 2) + 1, 0]
 
-        # map_noise_x = Qw[0,0]*noise
-        # map_noise_y = Qw[1,1]*noise
-        # it may be better to add idependent noise to all landmarks
-        # W_new[feature1_indices_seen, i] = W[feature1_indices_seen, c] + map_noise_x[0, :]
-        # W_new[feature2_indices_seen, i] = W[feature2_indices_seen, c] + map_noise_y[1, :]
-
     return S, W
 
-
-'''
-W = zeros((2 * size(measurements, 1), M))
-    particle_measurements = zeros((2 * size(measurements, 1), M))
-    particle_measurements[:, :] = reshape(measurements, (size(measurements), 1), order='F')
-    seen_landmarks_indices = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F'))
-    noise = tile(diag(Q), (M, sum(measurements.any(axis=0)))).T * random.rand(
-        sum(measurements.any(axis=0)) * size(diag(Q)), M)
-    particle_measurements[seen_landmarks_indices, :] += noise
-    s = where(reshape(tile(measurements.any(axis=0), (2, 1)), (1, 2 * n_landmarks), order='F')[0])[0]
-    feature1_indices = s[where(mod(s, 2) == 0)[0]]
-    feature2_indices = feature1_indices + 1
-    W[feature1_indices, :] = S[0, :] + particle_measurements[feature1_indices, :] * cos(
-        S[2, :] + particle_measurements[feature2_indices, :])
-    W[feature2_indices, :] = S[1, :] + particle_measurements[feature1_indices, :] * sin(
-        S[2, :] + particle_measurements[feature2_indices, :])
-'''
 
 def measurement_model(S, W):
     # W is the location of the landmarks on each particles map. Shape [2*landmarks, particles]
@@ -151,17 +114,6 @@ def measurement_model(S, W):
     h[feature2_indices, :] = arctan2(W[feature2_indices, :] - S[1, :], W[feature1_indices, :] - S[0, :]) - S[2, :]
 
     h[feature2_indices, :] = mod(h[feature2_indices, :] + pi, 2 * pi) - pi
-
-    '''
-    # inputa varannan
-    h = zeros((2 * no_landmarks, M))
-    h[xindices, :] = sqrt(square(W[xindices, :] - S[0, :]) + square(W[yindices, :] - S[1, :]))
-    h[yindices, :] = arctan2(W[yindices, :] - S[1, :], W[xindices, :] - S[0, :]) - S[2, :]
-    # print(shape(sqrt(square(W[xindices, :] - S[0,:]) + square(W[yindices, :] - S[1,:]) )))
-    # print(shape(h))
-
-    h[yindices, :] = mod(h[yindices, :] + pi, 2 * pi) - pi
-    '''
 
     return h
 

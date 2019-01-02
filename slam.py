@@ -31,7 +31,7 @@ class OccupancyGrid:
     def isOccupied(self, x, y):
         i, j = self.getCellCoordinates(x, y)
 
-        return self.grid[j, i]
+        return self.grid[j, i] > .5
 
     def isFree(self, x, y):
         i, j = self.getCellCoordinates(x, y)
@@ -43,10 +43,13 @@ class OccupancyGrid:
 
         return self.true_grid[j, i]
 
-    def markOccupiedSpace(self, x, y):
+    def markOccupiedSpace(self, x, y, alpha):
         i, j = self.getCellCoordinates(x, y)
 
+        # ii, jj = 0, 0
+        # for ii in arange(-sqrt(2), 2*sqrt(2)):
         self.grid[j, i] = 1
+
 
     def markFreeSpace(self, x, y):
         i, j = self.getCellCoordinates(x, y)
@@ -90,12 +93,13 @@ def getMeasurements(robot_pose, robot_estimate, S):
 
             # if not occ_grid.isOccupied(x_ray_shifted, y_ray_shifted):
             # if occ_grid.withinBounds(x_ray_shifted, y_ray_shifted):
+            #if not occ_grid.isOccupied(x_ray_shifted, y_ray_shifted):
             occ_grid.markFreeSpace(x_ray_shifted, y_ray_shifted)
 
             if occ_grid.isWall(x_ray, y_ray):
                 is_free = False
                 # if occ_grid.withinBounds(x_ray_shifted, y_ray_shifted):
-                occ_grid.markOccupiedSpace(x_ray_shifted, y_ray_shifted)
+                occ_grid.markOccupiedSpace(x_ray_shifted, y_ray_shifted, alpha)
 
     for j in range(n_landmarks):
         dx = landmarks[0, j] - robot_pose[0]
@@ -201,6 +205,7 @@ def initMap():
             y += dy / n
 
             i, j = occ_grid.getCellCoordinates(x, y)
+            ii, jj = 0, 0
             for ii in range(-1, 2):
                 for jj in range(-1, 2):
                     # if j + jj > 0 and i + ii > 0 and j + jj < 100 and i + ii < 100:
@@ -277,10 +282,10 @@ def getOdometry(start_pose, dt):
 def init_parameter():  # Initialization fo parameters in particle fitler
 
     x0, y0, theta0 = .5, .5, pi / 2
-    Q =  2e-2 * eye(2)  # Measurement noise .8*1e-2 *
-    Qw = 2e-2 * eye(2)  # Map resampling noise
-    R = .8*diag([1e-2, 1e-2, 5e-2])  # Prediction noise
-    lambda_Psi = 0.01  # Outlier threshold
+    Q =  5e-2 * eye(2)  # Measurement noise .8*1e-2 *
+    Qw = 1e-2 * eye(2)  # Map resampling noise
+    R = 1.3*diag([1e-2, 1e-2, 5e-2])  # Prediction noise
+    lambda_Psi = 1e-8  # Outlier threshold
     M = 100  # Number of particles
     start_pose = [x0, y0, theta0]
     S = pf.particle_init(M, start_pose)  # Particle set [3+landmarks, M]
@@ -311,17 +316,14 @@ def particleFilterSlam():
 
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
-
         S, W = pf.systematic_resample(S, W, Qw, measurements)
 
         # time.sleep(1)
     diff = sqrt(square(robot_estimates[0, -2] - robot_poses[0, -1]) + square(robot_estimates[1, -2] - robot_poses[1, -1]))
 
-    print('estimates')
-    print(robot_estimates[:, 0:5])
-    print('real poses')
-    print(robot_poses[:, 0:5])
-    #print(diff)
+    print(robot_estimates[0, -5:])
+    print(robot_poses[0, -5:])
+    print(diff)
     print('Done')
 
 
