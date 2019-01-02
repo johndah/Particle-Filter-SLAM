@@ -7,6 +7,8 @@ def motion_model_prediction(S, v, omega, R, delta_t):
     dx = array([v * delta_t * cos(S[2, :])])
     dy = array([v * delta_t * sin(S[2, :]) - 0*1e-3])  # simulating error in motion model
     dtheta = ones([1, M]) * (omega * delta_t + 0*1e-2)  # simulating error in motion
+    dy = array([v * delta_t * sin(S[2, :]) - 1e-3])  # simulating error in motion model
+    dtheta = ones([1, M]) * (omega * delta_t + 1e-4)  # simulating error in motion
     u = concatenate((dx, dy, dtheta))
     noise = dot(R, random.randn(3, M))  # Noise with covariance R
     S[:3, :] = S[:3, :] + u + noise
