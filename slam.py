@@ -256,10 +256,10 @@ def getOdometry(start_pose, dt):
 
 def init_parameter():  # Initialization fo parameters in particle fitler
     x0, y0, theta0 = 0.25, 0.25, pi / 2
-    Q = 1e-2 * eye(2)  # Measurement noise
-    Qw = 1e-2 * eye(2)  # Map resampling noise
-    R = diag([1e-2, 1e-2, 1e-1])  # Prediction noise
-    lambda_Psi = 0.01  # Outlier threshold
+    Q = 6e-1 * eye(2)  # Measurement noise
+    Qw = 5e-3 * eye(2)  # Map resampling noise
+    R = 0*diag([1e-2, 1e-2, 1e-1])  # Prediction noise
+    lambda_Psi = 0.00001  # Outlier threshold
     M = 100  # Number of particles
     start_pose = [x0, y0, theta0]
     S = pf.particle_init(M, start_pose)  # Particle set
@@ -275,7 +275,7 @@ def particleFilterSlam():
     start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
 
-    for i in range(0, 20):  # n_path):
+    for i in range(0, 70):  # n_path):
 
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
