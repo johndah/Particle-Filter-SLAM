@@ -14,14 +14,6 @@ def motion_model_prediction(S, v, omega, R, delta_t):
     return S
 
 
-def motion_model_gt(v, omega, mu, delta_t):
-    # Calculates ground truth u given v, omega, mu, and delta_t; u = (dx,dy,dtheta)
-    dx = v * delta_t * cos(mu[2])
-    dy = v * delta_t * sin(mu[2])
-    dtheta = omega * delta_t
-    u = [dx, dy, dtheta]
-    return u
-
 
 def motion_model(v, omega, robot_poses, delta_t, i):
     # Calculates ground truth u given v, omega, mu, and delta_t; u = (dx,dy,dtheta)

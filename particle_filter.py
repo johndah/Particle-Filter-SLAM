@@ -28,7 +28,7 @@ def associate_known(S, measurements, W, lambda_Psi, Q):
 
     q = tile(diag(Q), (M, n_landmarks)).T
     # q = tile(flip(array([diag(Q)]), axis=1), [1, M])
-    nu2 = nu ** 2 / (q)  # Assuming Q is 2x2
+    nu2 = nu ** 2 / q  # Assuming Q is 2x2
     d = nu2[feature1_indices, :] + nu2[feature2_indices, :]
 
     psi = 1 / (2 * pi * linalg.det(Q)) ** -.5 * exp(-.5 * d)
@@ -36,16 +36,6 @@ def associate_known(S, measurements, W, lambda_Psi, Q):
     seen_landmarks_indices = where(1 - measurements.any(axis=0))
     psi[seen_landmarks_indices, :] = 0
     outlier = mean(psi, axis=1) <= lambda_Psi
-
-    '''
-    z_i = tile(measurements[:, i], (1, M, N)) 
-    nu[:, :, :] = z_i - z_hat
-    nu[2, :, :] = mod(nu[2, :, :] + pi, 2*pi) - pi
-    q = flip(tile(diag(Q), [1, M, N]), axis=1)
-    d = sum(nu**2/q)  # Assuming Q is 2x2
-    psi[:, :] = 1/(2*pi*linalg.det(Q)**.5)
-    Psi[i, :] = max(psi, [], [2])
-    '''
 
     return psi, outlier
 
@@ -129,27 +119,6 @@ def weight(S, Psi, outlier):
 
     return S
 
-def measurement_model_test():
-    S = array([array([1, 2, 3, 4]), array([-1, -2, -3, -4]), array([0.1, 0.2, 0.3, 0.4]), array([1, 1, 1, 1])])
-    W = array([array([1, 2, 3, 4]), array([1, 2, 3, 4]), array([-1, -2, -3, -4]),
-               array([-1, -2, -3, -4])])  # 4 particles and 2 landmark
-    W = W.T
-
-    h = measurement_model(W, S)
-
-
-def motion_model_prediction_test():
-    window = [0, 5, 0, 5]
-    S = particle_init(window, 100)
-    fig1 = plt.figure()
-    plot_particle_set(S, fig1)
-
-    R = diag([0, 0, 0])
-    delta_t = 1
-    S = motion_model_prediction(1, 0, S, R, delta_t)
-    fig2 = plt.figure()
-    plot_particle_set(S, fig2)
-    plt.show(fig1)
 
 
 def systematic_resample_test():
@@ -161,29 +130,4 @@ def systematic_resample_test():
     print(S)
     print('W')
     print(W)
-
-
-def motion_model_prediction_test():
-    window = [0,5,0,5]
-    S = particle_init(window, 100)
-    fig1 = plt.figure()
-    plot_particle_set(S, fig1)
-
-    R = diag([0,0,0])
-    delta_t = 1
-    S = motion_model_prediction(1, 0, S, R, delta_t)
-    fig2 = plt.figure()
-    plot_particle_set(S, fig2)
-    plt.show(fig1)
-
-
-def main():
-    S = array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [0, 1 / 6, 2 / 6, 3 / 6]])
-    # print(S)
-    #S = systematic_resample(S)
-    # print(S)
-
-if __name__ == '__main__':
-    random.seed(0)
-    main()
 
