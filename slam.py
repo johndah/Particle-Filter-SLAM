@@ -21,12 +21,11 @@ class OccupancyGrid:
 
         self.extremes = zeros((2, 2))
 
-
     def getCellCoordinates(self, x, y):
-            i = int((x - axis[0]) / self.grid_size)
-            j = int((y - axis[2]) / self.grid_size)
+        i = int((x - axis[0]) / self.grid_size)
+        j = int((y - axis[2]) / self.grid_size)
 
-            return i, j
+        return i, j
 
     def isOccupied(self, x, y):
         i, j = self.getCellCoordinates(x, y)
@@ -50,7 +49,6 @@ class OccupancyGrid:
         # for ii in arange(-sqrt(2), 2*sqrt(2)):
         self.grid[j, i] = 1
 
-
     def markFreeSpace(self, x, y):
         i, j = self.getCellCoordinates(x, y)
 
@@ -63,10 +61,11 @@ class OccupancyGrid:
         return x, y
 
     def withinBounds(self, x, y):
-        return x > self.extremes[0, 0] and x < self.extremes[0, 1] and y > self.extremes[1, 0] and y < self.extremes[1, 1]
+        return x > self.extremes[0, 0] and x < self.extremes[0, 1] and y > self.extremes[1, 0] and y < self.extremes[
+            1, 1]
 
 
-def getMeasurements(robot_pose, robot_estimate, S):
+def getMeasurements(robot_pose, robot_estimate):
     global occ_grid, updated_cells, landmarks
 
     sigma = 2e-2
@@ -76,12 +75,13 @@ def getMeasurements(robot_pose, robot_estimate, S):
 
     n_alphas = 360
     alphas = linspace(-pi, pi, n_alphas) + sigma * random.randn(n_alphas)
+    marked_cells = []
 
     for alpha in alphas:
         x_ray = robot_pose[0]
         y_ray = robot_pose[1]
-
         is_free = True
+
         n = 1 / occ_grid.grid_size
 
         while is_free:
@@ -93,13 +93,15 @@ def getMeasurements(robot_pose, robot_estimate, S):
 
             # if not occ_grid.isOccupied(x_ray_shifted, y_ray_shifted):
             # if occ_grid.withinBounds(x_ray_shifted, y_ray_shifted):
-            #if not occ_grid.isOccupied(x_ray_shifted, y_ray_shifted):
-            occ_grid.markFreeSpace(x_ray_shifted, y_ray_shifted)
+            # if not occ_grid.isOccupied(x_ray_shifted, y_ray_shifted):
+            if not (x_ray_shifted, y_ray_shifted) in marked_cells:
+                occ_grid.markFreeSpace(x_ray_shifted, y_ray_shifted)
 
             if occ_grid.isWall(x_ray, y_ray):
                 is_free = False
                 # if occ_grid.withinBounds(x_ray_shifted, y_ray_shifted):
                 occ_grid.markOccupiedSpace(x_ray_shifted, y_ray_shifted, alpha)
+                marked_cells.append((x_ray_shifted, y_ray_shifted))
 
     for j in range(n_landmarks):
         dx = landmarks[0, j] - robot_pose[0]
@@ -136,7 +138,7 @@ def getMeasurements(robot_pose, robot_estimate, S):
 
 
 def plotMap(robot_poses, robot_estimates, only_ordometry, measurements, pose_index, S, W):
-    global occ_grid, ax, updated_cells, walls, landmarks
+    global occ_grid, ax, updated_cells, walls, landmarks, fig
 
     plt.cla()
     robot_pose = robot_poses[:, pose_index]
@@ -150,36 +152,54 @@ def plotMap(robot_poses, robot_estimates, only_ordometry, measurements, pose_ind
         if measurements[0, i].any():
             r = measurements[0, i]
             alpha = measurements[1, i]
-            plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha + robot_pose[2])],
-                     [robot_pose[1], robot_pose[1] + r * sin(alpha + robot_pose[2])],
-                     'g', linewidth=.7)
+            if i > 0:
+                plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha + robot_pose[2])],
+                         [robot_pose[1], robot_pose[1] + r * sin(alpha + robot_pose[2])],
+                         'g', linewidth=.7)
+            else:
+                plt.plot([robot_pose[0], robot_pose[0] + r * cos(alpha + robot_pose[2])],
+                         [robot_pose[1], robot_pose[1] + r * sin(alpha + robot_pose[2])],
+                         'g', linewidth=.7, label='LIDAR measurements')
 
-    for wall in walls:
-        plt.plot(wall[:2], wall[2:4], 'b', linewidth=1.5)
+    for i in range(len(walls)):
+        wall = walls[i]
+        if i > 0:
+            plt.plot(wall[:2], wall[2:4], 'b', linewidth=1.5)
+        else:
+            plt.plot(wall[:2], wall[2:4], 'b', linewidth=1.5, label='True wall')
 
     for j in range(size(landmarks, 1)):
-        plt.plot(landmarks[0, j], landmarks[1, j], 'go', markersize=10)
+        if j > 0:
+            plt.plot(landmarks[0, j], landmarks[1, j], 'go', markersize=10)
+        else:
+            plt.plot(landmarks[0, j], landmarks[1, j], 'go', markersize=10, label='True landmark')
         plt.text(landmarks[0, j], landmarks[1, j] + .05, '(' + str(j) + ')')
 
-    pf.plot_particle_set(S)
     pf.plot_landmark_particle_set(W)
+    pf.plot_particle_set(S)
 
-    plt.plot(robot_poses[0, :-2], robot_poses[1, :-2], 'gx')
+    plt.plot(robot_poses[0, :-2], robot_poses[1, :-2], 'gx', label='True trajectory')
 
-    plt.plot(robot_estimates[0, :-2], robot_estimates[1, :-2], 'bx')
+    plt.plot(robot_estimates[0, :-2], robot_estimates[1, :-2], 'bx', label='Estimated trajectory')
 
-    plt.plot(only_ordometry[0, :-2], only_ordometry[1, :-2], 'rx')
+    plt.plot(only_ordometry[0, :-2], only_ordometry[1, :-2], 'rx', label='Odometry trajectory')
 
     t = mpl.markers.MarkerStyle(marker='>')
     t._transform = t.get_transform().rotate_deg(robot_pose[2] * 180 / pi)
-    plt.scatter(robot_pose[0], robot_pose[1], marker=t, s=40, color='g')
+    plt.scatter(robot_pose[0], robot_pose[1], marker=t, s=40, color='g', label='Robot pose')
 
-    plt.axis(axis)
+    plt.scatter(-1, -1, marker='s', color='grey', s=10, label='Unknown space')
+    plt.scatter(-1, -1, marker='s', color='white', s=10, label='Free space')
+    plt.scatter(-1, -1, marker='s', color='orange', s=10, label='Occupied space')
+
+    plt.axis([0, 5, 0, 3])
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Map')
+    plt.legend(loc='upper right')
     plt.pause(1e-5)
 
+    ax.set_facecolor('grey')
 
 def initMap():
     global occ_grid, ax, walls, path, landmarks, n_landmarks
@@ -207,12 +227,10 @@ def initMap():
             y += dy / n
 
             i, j = occ_grid.getCellCoordinates(x, y)
-            ii, jj = 0, 0
+
             for ii in range(-1, 2):
                 for jj in range(-1, 2):
-                    # if j + jj > 0 and i + ii > 0 and j + jj < 100 and i + ii < 100:
                     occ_grid.true_grid[j + jj, i + ii] = 1
-
 
     f = open("landmarks.txt", "r")
     i = 0
@@ -284,9 +302,9 @@ def getOdometry(start_pose, dt):
 def init_parameter():  # Initialization fo parameters in particle fitler
 
     x0, y0, theta0 = .5, .5, pi / 2
-    Q =  5e-2 * eye(2)  # Measurement noise .8*1e-2 *
+    Q = 5e-2 * eye(2)  # Measurement noise .8*1e-2
     Qw = 1e-2 * eye(2)  # Map resampling noise
-    R = 1.3*diag([1e-2, 1e-2, 5e-2])  # Prediction noise
+    R = 1.3 * diag([1e-2, 1e-2, 5e-2])  # Prediction noise
     lambda_Psi = 1e-8  # Outlier threshold
     M = 100  # Number of particles
     start_pose = [x0, y0, theta0]
@@ -304,19 +322,20 @@ def particleFilterSlam():
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
     robot_estimates = zeros(shape(robot_poses))
     only_ordometry = zeros(shape(robot_poses))
-    robot_estimates[:,0] = start_pose
-    only_ordometry[:,0] = start_pose
+    robot_estimates[:, 0] = start_pose
+    only_ordometry[:, 0] = start_pose
     zeros((1, n_landmarks))
 
     for i in range(1, size(robot_poses, 1) - 1):
-        robot_poses = motion.motion_model(velocities[0, i-1], angular_velocities[0, i-1], robot_poses, dt, i-1)
+        robot_poses = motion.motion_model(velocities[0, i - 1], angular_velocities[0, i - 1], robot_poses, dt, i - 1)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
-        only_ordometry[:,i] = motion.motion_model_prediction(array([only_ordometry[:,i-1]]).T, velocities[0, i], angular_velocities[0, i], R, dt)[:,0]
+        only_ordometry[:, i] = motion.motion_model_prediction(array([only_ordometry[:, i - 1]]).T, velocities[0, i],
+                                                              angular_velocities[0, i], R, dt)[:, 0]
 
         robot_estimates[0, i] = mean(S[0, :])
         robot_estimates[1, i] = mean(S[1, :])
         robot_estimates[2, i] = mean(S[2, :])
-        measurements = getMeasurements(robot_poses[:, i], robot_estimates[:, i], S)
+        measurements = getMeasurements(robot_poses[:, i], robot_estimates[:, i])
         W = getLandmarkParticles(S, measurements, Q, W)
 
         plotMap(robot_poses, robot_estimates, only_ordometry, measurements, i, S, W)
@@ -346,8 +365,8 @@ def particleFilterSlam():
 
 
 def main():
-    random.seed(1)
-    global occ_grid, ax
+    random.seed(0)
+    global occ_grid, ax, fig
     occ_grid = OccupancyGrid()
 
     fig, ax = plt.subplots()
