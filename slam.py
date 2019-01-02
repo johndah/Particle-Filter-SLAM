@@ -297,9 +297,6 @@ def particleFilterSlam():
     robot_estimates = zeros(shape(robot_poses))
     zeros((1, n_landmarks))
 
-    print(robot_estimates[:, -5:])
-    print(robot_poses[:, -5:])
-
     for i in range(0, size(robot_poses, 1) - 1):
         robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
@@ -315,7 +312,7 @@ def particleFilterSlam():
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
 
-        S, W = pf.systematic_resample(S, W, Qw)
+        S, W = pf.systematic_resample(S, W, Qw, measurements)
 
         # time.sleep(1)
     diff = sqrt(square(robot_estimates[0, -2] - robot_poses[0, -1]) + square(robot_estimates[1, -2] - robot_poses[1, -1]))
