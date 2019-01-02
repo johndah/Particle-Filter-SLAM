@@ -40,7 +40,6 @@ class OccupancyGrid:
 
     def isWall(self, x, y):
         i, j = self.getCellCoordinates(x, y)
-
         return self.true_grid[j, i]
 
     def markOccupiedSpace(self, x, y):
@@ -259,7 +258,7 @@ def getOdometry(start_pose, dt):
     a_velocities = path[1]
     n_path = int(sum(distances) / dt)
 
-    robot_poses = zeros([3, n_path + 1])
+    robot_poses = zeros((3, n_path + 1))
     robot_poses[:, 0] = start_pose
 
     velocities = ones((1, n_path))
@@ -283,7 +282,7 @@ def init_parameter():  # Initialization fo parameters in particle fitler
     lambda_Psi = 0.01  # Outlier threshold
     M = 100  # Number of particles
     start_pose = [x0, y0, theta0]
-    S = pf.particle_init(M, start_pose)  # Particle set
+    S = pf.particle_init(M, start_pose)  # Particle set [3+landmarks, M]
     W = zeros((2 * n_landmarks, M))
     dt = 0.1
 
@@ -296,18 +295,14 @@ def particleFilterSlam():
     start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
     robot_estimates = zeros(shape(robot_poses))
+    robot_estimates[:,0] = start_pose
     zeros((1, n_landmarks))
 
-    print(robot_estimates[:, -5:])
-    print(robot_poses[:, -5:])
-
-    for i in range(0, size(robot_poses, 1) - 1):
-        robot_poses = motion.motion_model(velocities[0, i], angular_velocities[0, i], robot_poses, dt, i)
+    for i in range(1, size(robot_poses, 1) - 1):
+        robot_poses = motion.motion_model(velocities[0, i-1], angular_velocities[0, i-1], robot_poses, dt, i-1)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
-
         robot_estimates[0, i] = mean(S[0, :])
         robot_estimates[1, i] = mean(S[1, :])
-
         measurements = getMeasurements(robot_poses[:, i], robot_estimates[:, i], S)
         W = getLandmarkParticles(S, measurements, Q, W)
 
@@ -321,9 +316,11 @@ def particleFilterSlam():
         # time.sleep(1)
     diff = sqrt(square(robot_estimates[0, -2] - robot_poses[0, -1]) + square(robot_estimates[1, -2] - robot_poses[1, -1]))
 
-    print(robot_estimates[:, -5:])
-    print(robot_poses[:, -5:])
-    print(diff)
+    print('estimates')
+    print(robot_estimates[:, 0:5])
+    print('real poses')
+    print(robot_poses[:, 0:5])
+    #print(diff)
     print('Done')
 
 
