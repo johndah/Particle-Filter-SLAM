@@ -5,10 +5,10 @@ import matplotlib as mpl
 
 def particle_init(M, start_pose=[]):
     # initializes the particle set of M particles all at the starting pose
-    S = zeros([4, M])  
-    S[0, :] = start_pose[0] * ones([1, M]) 
-    S[1, :] = start_pose[1] * ones([1, M]) 
-    S[2, :] = start_pose[2] * ones([1, M]) 
+    S = zeros([4, M])
+    S[0, :] = start_pose[0] * ones([1, M])
+    S[1, :] = start_pose[1] * ones([1, M])
+    S[2, :] = start_pose[2] * ones([1, M])
 
     return S
 
@@ -67,30 +67,30 @@ def plot_landmark_particle_set(W):
     plt.scatter(W[feature1_indices, :], W[feature2_indices, :], marker='o', s=5, color=[.05, .3, .05])
 
 def systematic_resample(S, W, Qw):  # Must include map resample
-	''' Qw is the noise that get added to the maps in the resampling step '''
-	M = S.shape[1]
-	cdf = cumsum(S[3, :])
-	half_of_landmarks = int(W.shape[0]/4)
+    ''' Qw is the noise that get added to the maps in the resampling step '''
+    M = S.shape[1]
+    cdf = cumsum(S[3, :])
+    half_of_landmarks = int(W.shape[0]/4)
 
-	random.seed(0)
-	rand = random.uniform(0, 1 / M, 1)
-	S_new = zeros(S.shape)
-	W_new = zeros(W.shape)
+    rand = random.uniform(0, 1 / M, 1)
+    S_new = zeros(S.shape)
+    W_new = zeros(W.shape)
 
-	s = where(W.any(axis=1))[0]
-	feature1_indices = s[where(mod(s, 2) == 0)[0]]
-	feature2_indices = feature1_indices + 1
-	for i in range(M):
-		c = where(cdf >= rand + (i) / M)[0][0]
-		S_new[:, i] = S[:, c]
-		S_new[3, i] = 1/M
-		map_noise_x = Qw[0,0]*random.randn(2,len(feature1_indices))
-		map_noise_y = Qw[1,1]*random.randn(2,len(feature2_indices))
-		#it may be better to add idependent noise to all landmarks
-		W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise_x[0, :]  
-		W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise_y[1, :]		
+    s = where(W.any(axis=1))[0]
+    feature1_indices = s[where(mod(s, 2) == 0)[0]]
+    feature2_indices = feature1_indices + 1
 
-	return S_new, W_new
+    for i in range(M):
+        c = where(cdf >= rand + (i) / M)[0][0]
+        S_new[:, i] = S[:, c]
+        S_new[3, i] = 1/M
+        map_noise_x = Qw[0,0]*random.randn(2,len(feature1_indices))
+        map_noise_y = Qw[1,1]*random.randn(2,len(feature2_indices))
+        #it may be better to add idependent noise to all landmarks
+        W_new[feature1_indices, i] = W[feature1_indices, c] + map_noise_x[0, :]
+        W_new[feature2_indices, i] = W[feature2_indices, c] + map_noise_y[1, :]
+
+    return S_new, W_new
 
 
 '''
@@ -209,5 +209,6 @@ def main():
     # print(S)
 
 if __name__ == '__main__':
+    random.seed(0)
     main()
 
