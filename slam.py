@@ -296,14 +296,19 @@ def particleFilterSlam():
     start_pose, Q, Qw, R, lambda_Psi, S, W, dt = init_parameter()
     robot_poses, velocities, angular_velocities = getOdometry(start_pose, dt)
     robot_estimates = zeros(shape(robot_poses))
+    only_ordometry = zeros(shape(robot_poses))
     robot_estimates[:,0] = start_pose
+    only_ordometry[:,0] = start_pose
     zeros((1, n_landmarks))
 
     for i in range(1, size(robot_poses, 1) - 1):
         robot_poses = motion.motion_model(velocities[0, i-1], angular_velocities[0, i-1], robot_poses, dt, i-1)
         S = motion.motion_model_prediction(S, velocities[0, i], angular_velocities[0, i], R, dt)
+        only_ordometry[:,i] = motion.motion_model_prediction(array([only_ordometry[:,i-1]]).T, velocities[0, i], angular_velocities[0, i], R, dt)[:,0]
+        
         robot_estimates[0, i] = mean(S[0, :])
         robot_estimates[1, i] = mean(S[1, :])
+        robot_estimates[2, i] = mean(S[2, :])
         measurements = getMeasurements(robot_poses[:, i], robot_estimates[:, i], S)
         W = getLandmarkParticles(S, measurements, Q, W)
 
@@ -315,13 +320,14 @@ def particleFilterSlam():
         S, W = pf.systematic_resample(S, W, Qw, measurements)
 
         # time.sleep(1)
-    diff = sqrt(square(robot_estimates[0, -2] - robot_poses[0, -1]) + square(robot_estimates[1, -2] - robot_poses[1, -1]))
+    diff = sqrt(square(robot_estimates[0, -1] - robot_poses[0, -1]) + square(robot_estimates[1, -1] - robot_poses[1, -1]))
 
     print('estimates')
     print(robot_estimates[:, 0:5])
     print('real poses')
     print(robot_poses[:, 0:5])
-    #print(diff)
+    print('Error in final position')
+    print(diff)
     print('Done')
 
 
