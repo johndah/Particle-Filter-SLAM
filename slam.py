@@ -40,6 +40,7 @@ class OccupancyGrid:
 
     def isWall(self, x, y):
         i, j = self.getCellCoordinates(x, y)
+
         return self.true_grid[j, i]
 
     def markOccupiedSpace(self, x, y):
@@ -311,7 +312,7 @@ def particleFilterSlam():
         psi, outlier = pf.associate_known(S, measurements, W, lambda_Psi, Q)
         S = pf.weight(S, psi, outlier)
 
-        S, W = pf.systematic_resample(S, W, Qw)
+        S, W = pf.systematic_resample(S, W, Qw, measurements)
 
         # time.sleep(1)
     diff = sqrt(square(robot_estimates[0, -2] - robot_poses[0, -1]) + square(robot_estimates[1, -2] - robot_poses[1, -1]))
